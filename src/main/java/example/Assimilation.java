@@ -4,36 +4,48 @@ import arc.*;
 import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
+import mindustry.core.GameState;
 import mindustry.entities.type.*;
-import mindustry.game.EventType.*;
+import mindustry.game.EventType;
+import mindustry.game.Rules;
 import mindustry.gen.*;
 import mindustry.plugin.Plugin;
 
-public class ExamplePlugin extends Plugin{
+import static mindustry.Vars.*;
+
+public class Assimilation extends Plugin{
+
+    private final Rules rules = new Rules();
 
     //register event handlers and create variables in the constructor
-    public ExamplePlugin(){
-        //listen for a block selection event
-        Events.on(BuildSelectEvent.class, event -> {
-            if(!event.breaking && event.builder != null && event.builder.buildRequest() != null && event.builder.buildRequest().block == Blocks.thoriumReactor && event.builder instanceof Player){
-                //send a message to everyone saying that this player has begun building a reactor
-                Call.sendMessage("[scarlet]ALERT![] " + ((Player)event.builder).name + " has begun building a reactor at " + event.tile.x + ", " + event.tile.y);
-            }
+    public Assimilation(){
+
+        rules.canGameOver = false;
+
+        Events.on(EventType.BlockDestroyEvent.class, event ->{
+            System.out.println(event.tile.entity.lastHit + " team has killed " + event.tile.getTeam() + "!");
         });
+
     }
 
     //register commands that run on the server
     @Override
     public void registerServerCommands(CommandHandler handler){
-        handler.register("reactors", "List all thorium reactors in the map.", args -> {
-            for(int x = 0; x < Vars.world.width(); x++){
-                for(int y = 0; y < Vars.world.height(); y++){
-                    //loop through and log all found reactors
-                    if(Vars.world.tile(x, y).block() == Blocks.thoriumReactor){
-                        Log.info("Reactor at {0}, {1}", x, y);
-                    }
-                }
+        handler.register("assimilation", "Begin hosting the Assimilation gamemode.", args ->{
+            if(!Vars.state.is(GameState.State.menu)){
+                Log.err("Stop the server first.");
+                return;
             }
+
+            Log.info("Generating map...");
+            ArenaGenerator generator = new ArenaGenerator();
+            world.loadGenerator(generator);
+            Log.info("Map generated.");
+
+            state.rules = rules.copy();
+            logic.play();
+            netServer.openServer();
+
         });
     }
 

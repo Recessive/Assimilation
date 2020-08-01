@@ -16,7 +16,7 @@ ext{
 
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
-    compileOnly "com.github.Anuken.Mindustry:core:$mindustryVersion"
+    compileOnly 'com.github.Recessive.aaMindustryServer:core:master-SNAPSHOT'
 }
 
 jar{

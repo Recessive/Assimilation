@@ -1,7 +1,7 @@
 {
-  "name": "ExamplePlugin",
-  "author": "Anuke",
-  "main": "example.ExamplePlugin",
-  "description": "A plugin to demonstrate some basic features.",
-  "version": 1.0
+  "name": "Assimilation",
+  "author": "Recessive",
+  "main": "example.Assimilation",
+  "description": "A plugin for the assimilation gamemode",
+  "version": 0.0
 }
