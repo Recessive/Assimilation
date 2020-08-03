@@ -28,7 +28,7 @@ public class Cell {
     protected HashMap<Team, Integer> captureProgress = new HashMap<>();
     protected HashMap<Tuple<Float, Float>, Integer> builds = new HashMap<>();
 
-    private Schematic wallSpawn = Schematics.readBase64("bXNjaAB4nE2OUQrDIBBER5OwCeSr0GN4piKJJAFNQCu9fqOs2/ohjze7zGLCpNCfNjjMNqUjvD7We7d2eLz3Kx45mCKMt3G7R/4d5uWKzpx58S4nAE+0p8qnKxXsJRgkJU6VpJp39W1+rs2x6QopIRIaK3FD7Rh4l7uY2lUkHSRXkbSNnH4BSAkYkQ==");
+    private Schematic wallSpawn = Schematics.readBase64("bXNjaAB4nE2QywqDMBAAd5NNomA/xUtv/ZoiVqjgA7TS3299TeshTnQcNkouuYoNVd/IpZrntr+/q65rHlcnxes5Tu3Sl+sTKepxasphqbtmmUXkJufl1kVZflsPGRSgCCUoO0gpK1GlrJSVslJWyrqXt032P+x2c0d5bRhvz1kcs3i+8MziKXvKhmd4hmd4AS/gBbyAF/EiXsSLeAkv8dvTfs6NPGRQgCKU6J3l7DzilxRykIcMClCEErQXP30oExg=");
     private Schematic spawn = Schematics.readBase64("bXNjaAB4nD2SYW7DIAyFbRJCIN2PHiRSr7ITTChDUyVKqjTptNsPB3iNFD4F+z37qTTRB1Of/COQieEd4tdtpGlZn8+wzb8+Rrru992n+/GYlzW9w9+60fW1Rr/NT59CnDP9BLos6xbmdCwxHC/q/LaQeS1+38NG45Hi6r8zDY+Q5CT6pPbr5MUgBSovuemp1WjQADKgEaIWog40gS6VuFar8xHg/K25MdwYbgw3rm7S6ergXJTbFmedgp6CnoKegp7C9AoqHU5dO4TbbY+zL5uwznQ685BJMmBlMp3zdVLXMuihopGZhoou+Sn51jo0OtokfabSYTI13+GcmlluW++AXoMdx5q4UMvPoK5lISmfeyohDRpABjRWlREqFioWKhYqFioWKhYqFioOCbm6r5AClT8wZ2oeDh4OHg4eDh6uTNgJOdAEKhP8A1h6KiA=");
 
     public Cell(int x, int y, BuildRecorder recorder){
