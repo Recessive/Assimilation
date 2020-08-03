@@ -54,8 +54,9 @@ public class Cell {
     }
 
     public void makeShard(){
-        clearSpace(Blocks.coreShard.size);
+        clearSpace(Blocks.coreShard.size + 1);
         Tile coreTile = world.tile(x, y);
+        coreTile.link().removeNet();
         coreTile.setNet(Blocks.coreShard, owner, 0);
     }
 
