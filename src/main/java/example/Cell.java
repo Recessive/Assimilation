@@ -39,8 +39,6 @@ public class Cell {
     public void makeNexus(CustomPlayer ply){
         placeSchem(x, y, spawn, true, ply);
 
-        world.tile(x+6, y+6).setNet(Blocks.powerSource, owner, 0);
-
         /*clearSpace(Blocks.coreNucleus.size);
         Tile coreTile = world.tile(x, y);
         coreTile.setNet(Blocks.coreNucleus, owner, 0);
@@ -52,6 +50,7 @@ public class Cell {
     public void makeShard(){
         clearSpace(Blocks.coreShard.size);
         Tile coreTile = world.tile(x, y);
+        coreTile.setNet(Blocks.coreShard, owner, 0);
     }
 
     public void clearSpace(int size){
