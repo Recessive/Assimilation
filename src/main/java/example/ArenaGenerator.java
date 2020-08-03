@@ -26,14 +26,14 @@ import static mindustry.Vars.world;
 
 public class ArenaGenerator extends Generator {
 
-    public static final int size = 601;
+    public static final int size = 516;
     private int cellRadius;
     private int spacing;
 
     public ArenaGenerator(int cellRadius) {
         super(size, size);
         this.cellRadius = cellRadius;
-        spacing = cellRadius*2+5;
+        spacing = 78;
     }
 
     @Override
@@ -55,7 +55,7 @@ public class ArenaGenerator extends Generator {
             int x = (int) cell.get(0);
             int y = (int) cell.get(1);
             Geometry.circle(x, y, width, height, cellRadius*2, (cx, cy) ->{
-                if(Math.sqrt(Math.pow(cx - x, 2) + Math.pow(cy - y, 2)) < cellRadius-3){
+                if(Math.sqrt(Math.pow(cx - x, 2) + Math.pow(cy - y, 2)) < cellRadius-4){
                     Tile tile = tiles[cx][cy];
                     tile.setBlock(Blocks.air);
                 }
@@ -119,7 +119,7 @@ public class ArenaGenerator extends Generator {
         double h = Math.sqrt(3) * spacing/2;
         //base horizontal spacing=1.5w
         //offset = 3/4w
-        for(int x = 0; x < width / spacing - 3; x++){
+        for(int x = 0; x < width / spacing - 2; x++){
             for(int y = 0; y < height / (h/2) - 2; y++){
                 int cx = (int)(x * spacing*1.5 + (y%2)* spacing*3.0/4) + spacing/2;
                 int cy = (int)(y * h / 2) + spacing/2;

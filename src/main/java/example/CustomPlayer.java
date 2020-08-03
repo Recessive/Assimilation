@@ -14,6 +14,7 @@ public class CustomPlayer{
         this.player = player;
         this.assimRank = assimRank;
         this.lastTeam = player.getTeam();
+        this.assimRank = 4;
     }
 
 }

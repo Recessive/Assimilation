@@ -15,13 +15,12 @@ import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
+import mindustry.world.Block;
+import mindustry.world.Build;
 import mindustry.world.Tile;
 import mindustry.world.blocks.storage.CoreBlock;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 
 import static mindustry.Vars.*;
 
@@ -30,8 +29,8 @@ public class Assimilation extends Plugin{
     public int teamCount = 0;
 
     private final Rules rules = new Rules();
-    public static final int cellRadius = 30;
-    public static final int cellRequirement = 1500;
+    public static final int cellRadius = 37;
+    public static final int cellRequirement = 15000;
 
     private List<Cell> cells = new ArrayList<>();
     private List<Cell> freeCells = new ArrayList<>();
@@ -41,17 +40,38 @@ public class Assimilation extends Plugin{
     private HashMap<String, CustomPlayer> players = new HashMap<>();
     private HashMap<Team, AssimilationTeam> teams = new HashMap<>();
 
+    private BuildRecorder recorder = new BuildRecorder();
+
     //register event handlers and create variables in the constructor
     public void init(){
 
         rules.canGameOver = false;
-        rules.playerDamageMultiplier = 5;
+        rules.playerDamageMultiplier = 0;
         rules.enemyCoreBuildRadius = 28 * 8;
-        rules.respawnTime = 0;
         rules.loadout = ItemStack.list(Items.copper, 1000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 200);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
+        rules.buildSpeedMultiplier = 2;
 
+
+        netServer.admins.addActionFilter((action) -> {
+            Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
+            if (build != null && action.player != null
+                    && ((CustomPlayer) build.get(0)).assimRank > players.get(action.player.uuid).assimRank
+                    && players.get(action.player.uuid).assimRank < 3) {
+                return false;
+            }
+            return true;
+        });
 
         Events.on(EventType.BlockBuildEndEvent.class, event ->{
+
+            // A nice simple way of recording all block places and the players who placed them.
+            if(event.breaking){
+                recorder.removeBuild(event.tile.x, event.tile.y);
+            }else{
+                recorder.addBuild(event.tile.x, event.tile.y, players.get(event.player.uuid), event.tile.block());
+            }
+
             for(Cell cell : cells){
                 if(cell.contains(event.tile.x, event.tile.y)){
                     cell.updateCapture(event.tile.link(), event.breaking);
@@ -62,6 +82,7 @@ public class Assimilation extends Plugin{
 
         Events.on(Cell.CellCaptureEvent.class, event ->{
             event.cell.makeShard();
+            freeCells.remove(event.cell);
             boolean allCapped = true;
             for(Cell cell : cells){
                 if(cell.owner != event.cell.owner){
@@ -71,7 +92,7 @@ public class Assimilation extends Plugin{
             }
 
             if(allCapped) {
-                endgame();
+                endgame(teams.get(event.cell.owner).name);
             }
         });
 
@@ -83,15 +104,19 @@ public class Assimilation extends Plugin{
                 }
             }
 
+            recorder.removeBuild(event.tile.x, event.tile.y);
 
+            // Check for team elimination (when nucleus is destroyed)
             if(event.tile.block() == Blocks.coreNucleus){
                 Team oldTeam = event.tile.getTeam();
                 Team newTeam = event.tile.entity.lastHit;
-                Call.sendMessage("[accent]" + teams.get(newTeam).name + "[accent] H A S  [scarlet]A S S I M I L A T E D [accent]" + teams.get(oldTeam).name + "!");
+                Call.sendMessage("[accent]" + teams.get(newTeam).name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + teams.get(oldTeam).name + "[accent]'s team!");
                 for(Player ply : teams.get(oldTeam).players){
+                    CustomPlayer cPly = players.get(ply.uuid);
                     ply.setTeam(newTeam);
                     players.get(ply.uuid).lastTeam = newTeam;
                     teams.get(newTeam).addPlayer(ply);
+                    cPly.assimRank = 2;
                     ply.kill();
                 }
 
@@ -101,8 +126,10 @@ public class Assimilation extends Plugin{
 
             }
 
+            // Check for cell destruction and clear the cell
             if(event.tile.block() == Blocks.coreShard){
                 eventCell.clearCell();
+                freeCells.add(eventCell);
             }
 
             if(eventCell != null && eventCell.owner == null && !(event.tile.block() instanceof CoreBlock)){
@@ -175,24 +202,65 @@ public class Assimilation extends Plugin{
     @Override
     public void registerClientCommands(CommandHandler handler){
 
-        //register a simple reply command
-        handler.<Player>register("reply", "<text...>", "A simple ping command that echoes a player's text.", (args, player) -> {
-            player.sendMessage("You said: [accent] " + args[0]);
-        });
+        // Register the re-rank command
+        handler.<Player>register("rerank", "<player> <rank>", "Re-rank a player on your team to 1: Drone, 2: Private or 3: Captain", (args, player) -> {
+            if(players.get(player.uuid).assimRank != 4){
+                player.sendMessage("You can only re-rank players if you are a Commander!\n");
+                return;
+            }
+            boolean wasID = true;
+            Player other;
+            try {
+                other = Vars.playerGroup.getByID(Integer.parseInt(args[0]));
+            }catch (NumberFormatException e){
+                other = null;
+            }
 
-        //register a whisper command which can be used to send other players messages
-        handler.<Player>register("whisper", "<player> <text...>", "Whisper text to another player.", (args, player) -> {
-            //find player by name
-            Player other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
-
-            //give error message with scarlet-colored text if player isn't found
             if(other == null){
-                player.sendMessage("[scarlet]No player by that name found!");
+                wasID = false;
+                other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
+                if(other == null){
+                    String s = "[accent]No player by name [white]" + args[0] + "[accent] or id [white]" + args[0] + "[accent].\n";
+                    s += "You are able to rerank the following players:";
+                    for(Player ply: Vars.playerGroup){
+                        if(player.getTeam() == players.get(ply.uuid).lastTeam){
+                            s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
+                        }
+                    }
+                    player.sendMessage(s);
+                    return;
+                }
+            }
+            if(other == player){
+                player.sendMessage("[accent]Can not re-rank yourself!");
+                return;
+            }
+            if(other.getTeam() != player.getTeam()){
+                player.sendMessage("[accent]Can not re-rank players outside of your team!");
                 return;
             }
 
-            //send the other player a message, using [lightgray] for gray text color and [] to reset color
-            other.sendMessage("[lightgray](whisper) " + player.name + ":[] " + args[1]);
+            int newRank;
+            try{
+                newRank = Integer.parseInt(args[1]);
+            }catch (NumberFormatException e){
+                player.sendMessage("[accent]Rank must be a number from [scarlet]1 to 3[accent].");
+                return;
+            }
+
+            teams.get(player.getTeam()).rank(players.get(other.uuid), newRank);
+            String s1 = "[accent]Successfully re-ranked " + (wasID ? "ID: " : "Player: ") + "[white]" + args[0] + "[accent] to rank: [white]";
+            String s2 = "[accent]" + player.name + " has re-ranked you to ";
+            String append = "";
+            switch(newRank){
+                case 1: append = "Drone"; break;
+                case 2: append = "Private"; break;
+                case 3: append = "Captain"; break;
+            }
+            s1 += append;
+            s2 += append;
+            player.sendMessage(s1);
+            other.sendMessage(s2);
         });
     }
 
@@ -207,8 +275,8 @@ public class Assimilation extends Plugin{
         }
     }
 
-    void endgame(){
-        Call.sendMessage("Game over");
+    void endgame(String winner){
+        Call.onInfoMessage(winner + "[accent]'s team has conquered the planet! Loading the next world...");
         Time.runTask(60f * 10f, () -> {
             for(Player player : playerGroup.all()) {
                 Call.onConnect(player.con, "aamindustry.play.ai", 6567);
