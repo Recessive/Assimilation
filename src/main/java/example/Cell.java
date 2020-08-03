@@ -41,7 +41,6 @@ public class Cell {
         if(initSpawn){
             placeSchem(x, y, wallSpawn, true, ply);
         }else{
-            purgeCell();
             placeSchem(x, y, spawn, true, ply);
         }
 
@@ -121,6 +120,7 @@ public class Cell {
     }
 
     public void purgeCell(){
+        // Don't use
         int newX;
         int newY;
         for(int xi = -Assimilation.cellRadius; xi < x + Assimilation.cellRadius; xi ++){
