@@ -30,7 +30,7 @@ public class Assimilation extends Plugin{
 
     private final Rules rules = new Rules();
     public static final int cellRadius = 37;
-    public static final int cellRequirement = 15000;
+    public static final int cellRequirement = 1500;
 
     private List<Cell> cells = new ArrayList<>();
     private List<Cell> freeCells = new ArrayList<>();
@@ -48,15 +48,15 @@ public class Assimilation extends Plugin{
         rules.canGameOver = false;
         rules.playerDamageMultiplier = 0;
         rules.playerHealthMultiplier = 1;
-        rules.enemyCoreBuildRadius = cellRadius * 8;
-        rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000 + 459867, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400 + 238974);
+        rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
+        rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
         rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
         rules.buildSpeedMultiplier = 2;
 
 
         netServer.admins.addActionFilter((action) -> {
             Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
-            if (build != null && action.player != null
+            if (build != null && action.player != null && build.get(0) != null
                     && ((CustomPlayer) build.get(0)).assimRank > players.get(action.player.uuid).assimRank
                     && players.get(action.player.uuid).assimRank < 3) {
                 return false;
@@ -75,7 +75,7 @@ public class Assimilation extends Plugin{
 
             for(Cell cell : cells){
                 if(cell.contains(event.tile.x, event.tile.y)){
-                    cell.updateCapture(event.tile.link(), event.breaking);
+                    cell.updateCapture(event.tile.link(), event.breaking, event.player);
                     break;
                 }
             }
@@ -138,13 +138,14 @@ public class Assimilation extends Plugin{
 
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
                 eventCell.clearCell();
+                freeCells.remove(eventCell);
                 if(teams.keySet().size() == 1 && Team.crux.cores().size == 1){
                     endgame(teams.get(teams.keySet().toArray()[0]).name);
                 }
             }
 
             if(eventCell != null && eventCell.owner == null && !(event.tile.block() instanceof CoreBlock)){
-                eventCell.updateCapture(event.tile.link(), true);
+                eventCell.updateCapture(event.tile.link(), true, null);
             }
 
 
@@ -153,9 +154,25 @@ public class Assimilation extends Plugin{
         Events.on(EventType.PlayerJoin.class, event ->{
             if(players.containsKey(event.player.uuid) && teams.containsKey(players.get(event.player.uuid).lastTeam)){
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
-                teams.get(event.player.getTeam()).addPlayer(event.player);
                 return;
             }
+
+            // In the event there are no free cells
+            if(freeCells.size() == 0){
+                // Add player to the team with least players
+                AssimilationTeam minTeam = null;
+                int min = 5000;
+                for(AssimilationTeam team : teams.values()){
+                    if(team.players.size() < min){
+                        min = team.players.size();
+                        minTeam = team;
+                    }
+                }
+                event.player.setTeam(minTeam.team);
+                minTeam.addPlayer(event.player);
+                return;
+            }
+
             // Get new team
             teamCount ++;
             event.player.setTeam(Team.all()[teamCount+6]);
@@ -175,7 +192,7 @@ public class Assimilation extends Plugin{
             // Get custom player object and add player
             CustomPlayer ply = new CustomPlayer(event.player, 0);
             players.put(event.player.uuid, ply);
-            cell.makeNexus(players.get(event.player.uuid));
+            cell.makeNexus(players.get(event.player.uuid), false);
         });
 
     }
@@ -203,7 +220,7 @@ public class Assimilation extends Plugin{
             for(Tuple<Integer, Integer> cell : generator.getCells()){
                 Cell c = new Cell((int) cell.get(0), (int) cell.get(1), recorder);
                 c.owner = Team.crux;
-                c.makeNexus(null);
+                c.makeNexus(null, true);
                 cells.add(c);
                 freeCells.add(c);
             }

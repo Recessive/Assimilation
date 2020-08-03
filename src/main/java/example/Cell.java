@@ -28,6 +28,7 @@ public class Cell {
     protected HashMap<Team, Integer> captureProgress = new HashMap<>();
     protected HashMap<Tuple<Float, Float>, Integer> builds = new HashMap<>();
 
+    private Schematic wallSpawn = Schematics.readBase64("bXNjaAB4nE2OUQrDIBBER5OwCeSr0GN4piKJJAFNQCu9fqOs2/ohjze7zGLCpNCfNjjMNqUjvD7We7d2eLz3Kx45mCKMt3G7R/4d5uWKzpx58S4nAE+0p8qnKxXsJRgkJU6VpJp39W1+rs2x6QopIRIaK3FD7Rh4l7uY2lUkHSRXkbSNnH4BSAkYkQ==");
     private Schematic spawn = Schematics.readBase64("bXNjaAB4nD2SYW7DIAyFbRJCIN2PHiRSr7ITTChDUyVKqjTptNsPB3iNFD4F+z37qTTRB1Of/COQieEd4tdtpGlZn8+wzb8+Rrru992n+/GYlzW9w9+60fW1Rr/NT59CnDP9BLos6xbmdCwxHC/q/LaQeS1+38NG45Hi6r8zDY+Q5CT6pPbr5MUgBSovuemp1WjQADKgEaIWog40gS6VuFar8xHg/K25MdwYbgw3rm7S6ergXJTbFmedgp6CnoKegp7C9AoqHU5dO4TbbY+zL5uwznQ685BJMmBlMp3zdVLXMuihopGZhoou+Sn51jo0OtokfabSYTI13+GcmlluW++AXoMdx5q4UMvPoK5lISmfeyohDRpABjRWlREqFioWKhYqFioWKhYqFioOCbm6r5AClT8wZ2oeDh4OHg4eDh6uTNgJOdAEKhP8A1h6KiA=");
 
     public Cell(int x, int y, BuildRecorder recorder){
@@ -36,8 +37,14 @@ public class Cell {
         this.recorder = recorder;
     }
 
-    public void makeNexus(CustomPlayer ply){
-        placeSchem(x, y, spawn, true, ply);
+    public void makeNexus(CustomPlayer ply, boolean initSpawn){
+        if(initSpawn){
+            placeSchem(x, y, wallSpawn, true, ply);
+        }else{
+            purgeCell();
+            placeSchem(x, y, spawn, true, ply);
+        }
+
 
         /*clearSpace(Blocks.coreNucleus.size);
         Tile coreTile = world.tile(x, y);
@@ -65,7 +72,7 @@ public class Cell {
         return Math.sqrt(Math.pow(this.x - x, 2) + Math.pow(this.y - y, 2)) < Assimilation.cellRadius - 3;
     }
 
-    public void updateCapture(Tile tile, boolean breaking){
+    public void updateCapture(Tile tile, boolean breaking, Player ply){
         Team tileTeam = tile.getTeam();
         int progress = 0;
         if(captureProgress.containsKey(tile.getTeam())){
@@ -77,14 +84,25 @@ public class Cell {
             if(builds.containsKey(pos)) progress -= builds.remove(pos);
             else return;
         }else{
-            progress += tile.block().health;
-            builds.put(pos, tile.block().health);
+            int total = 0;
+            for(ItemStack stack : tile.block().requirements){
+                total += stack.amount * stack.item.cost;
+            }
+            progress += total;
+            builds.put(pos, total);
         }
+
         if(progress > Assimilation.cellRequirement && owner == null){
+            if(ply != null && ply.getTeam() != owner) {
+                Call.setHudText(ply.con, "[gold]Captured!");
+                Time.runTask(60f * 5, () -> Call.hideHudText(ply.con));
+            }
             owner = tile.getTeam();
             captureProgress.clear();
             Events.fire(new CellCaptureEvent(this));
         }else{
+            float percentage = ((float) progress / (float) Assimilation.cellRequirement)*100;
+            if(ply != null && ply.getTeam() != owner) Call.setHudText(ply.con, "[scarlet]" + Math.round(percentage * 100.0) / 100.0 + "% [accent]captured");
             captureProgress.put(tileTeam, progress);
         }
 
@@ -102,6 +120,20 @@ public class Cell {
         captureProgress.clear();
     }
 
+    public void purgeCell(){
+        int newX;
+        int newY;
+        for(int xi = -Assimilation.cellRadius; xi < x + Assimilation.cellRadius; xi ++){
+            for(int yi = -Assimilation.cellRadius; yi < y + Assimilation.cellRadius; yi ++){
+                newX = x + xi;
+                newY = y + yi;
+                if(Math.sqrt(Math.pow(x - newX, 2) + Math.pow(y - newY, 2)) < Assimilation.cellRadius-4){
+                    world.tile(newX, newY).removeNet();
+                }
+            }
+        }
+    }
+
     void placeSchem(int x, int y, Schematic schem, boolean addItem, CustomPlayer ply){
         Schematic.Stile coreTile = schem.tiles.find(s -> s.block instanceof CoreBlock);
         if(coreTile == null) throw new IllegalArgumentException("Schematic has no core tile. Exiting.");
@@ -117,7 +149,11 @@ public class Cell {
             tile.setNet(st.block, owner, st.rotation);
 
             Tuple<Float, Float> pos = new Tuple<>(tile.worldx(), tile.worldy());
-            builds.put(pos, tile.block().health);
+            int total = 0;
+            for(ItemStack stack : tile.block().requirements){
+                total += stack.amount * stack.item.cost;
+            }
+            builds.put(pos, total);
 
             if(ply != null && !(tile.block() instanceof CoreBlock)){
                 recorder.addBuild(tile.x, tile.y, ply, tile.block());
