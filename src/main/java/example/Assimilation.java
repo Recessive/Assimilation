@@ -47,8 +47,9 @@ public class Assimilation extends Plugin{
 
         rules.canGameOver = false;
         rules.playerDamageMultiplier = 0;
-        rules.enemyCoreBuildRadius = 28 * 8;
-        rules.loadout = ItemStack.list(Items.copper, 1000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 200);
+        rules.playerHealthMultiplier = 1;
+        rules.enemyCoreBuildRadius = cellRadius * 8;
+        rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000 + 459867, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400 + 238974);
         rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
         rules.buildSpeedMultiplier = 2;
 
@@ -107,7 +108,7 @@ public class Assimilation extends Plugin{
             recorder.removeBuild(event.tile.x, event.tile.y);
 
             // Check for team elimination (when nucleus is destroyed)
-            if(event.tile.block() == Blocks.coreNucleus){
+            if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() != Team.crux){
                 Team oldTeam = event.tile.getTeam();
                 Team newTeam = event.tile.entity.lastHit;
                 Call.sendMessage("[accent]" + teams.get(newTeam).name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + teams.get(oldTeam).name + "[accent]'s team!");
@@ -124,12 +125,22 @@ public class Assimilation extends Plugin{
                 eventCell.owner = null;
                 killTiles(oldTeam);
 
+                if(teams.keySet().size() == 1 && Team.crux.cores().size == 0){
+                    endgame(teams.get(teams.keySet().toArray()[0]).name);
+                }
+
             }
 
             // Check for cell destruction and clear the cell
             if(event.tile.block() == Blocks.coreShard){
                 eventCell.clearCell();
-                freeCells.add(eventCell);
+            }
+
+            if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
+                eventCell.clearCell();
+                if(teams.keySet().size() == 1 && Team.crux.cores().size == 1){
+                    endgame(teams.get(teams.keySet().toArray()[0]).name);
+                }
             }
 
             if(eventCell != null && eventCell.owner == null && !(event.tile.block() instanceof CoreBlock)){
@@ -164,7 +175,7 @@ public class Assimilation extends Plugin{
             // Get custom player object and add player
             CustomPlayer ply = new CustomPlayer(event.player, 0);
             players.put(event.player.uuid, ply);
-            cell.makeNexus();
+            cell.makeNexus(players.get(event.player.uuid));
         });
 
     }
@@ -185,14 +196,18 @@ public class Assimilation extends Plugin{
 
             // Create cells objects
 
+            state.rules = rules.copy();
+            logic.play();
+
+
             for(Tuple<Integer, Integer> cell : generator.getCells()){
-                Cell c = new Cell((int) cell.get(0), (int) cell.get(1));
+                Cell c = new Cell((int) cell.get(0), (int) cell.get(1), recorder);
+                c.owner = Team.crux;
+                c.makeNexus(null);
                 cells.add(c);
                 freeCells.add(c);
             }
 
-            state.rules = rules.copy();
-            logic.play();
             netServer.openServer();
 
         });
@@ -247,10 +262,14 @@ public class Assimilation extends Plugin{
                 player.sendMessage("[accent]Rank must be a number from [scarlet]1 to 3[accent].");
                 return;
             }
+            if(newRank < 1 || newRank > 3){
+                player.sendMessage("[accent]Rank must be a number from [scarlet]1 to 3[accent].");
+                return;
+            }
 
             teams.get(player.getTeam()).rank(players.get(other.uuid), newRank);
             String s1 = "[accent]Successfully re-ranked " + (wasID ? "ID: " : "Player: ") + "[white]" + args[0] + "[accent] to rank: [white]";
-            String s2 = "[accent]" + player.name + " has re-ranked you to ";
+            String s2 = "[accent]" + player.name + "[accent] has re-ranked you to [white]";
             String append = "";
             switch(newRank){
                 case 1: append = "Drone"; break;
