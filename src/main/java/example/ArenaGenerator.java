@@ -58,7 +58,11 @@ public class ArenaGenerator extends Generator {
                 if(Math.sqrt(Math.pow(cx - x, 2) + Math.pow(cy - y, 2)) < cellRadius-4){
                     Tile tile = tiles[cx][cy];
                     tile.setBlock(Blocks.air);
+                    if(Math.abs(cx - x) < 3 && Math.abs(cy - y) < 3){
+                        tile.setFloor((Floor) Blocks.sand);
+                    }
                 }
+
 
             });
             Angles.circle(3, 360f / 3 / 2f - 90, f -> {

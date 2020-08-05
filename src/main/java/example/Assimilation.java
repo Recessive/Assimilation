@@ -15,6 +15,8 @@ import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
+import mindustry.type.Mech;
+import mindustry.type.Weapon;
 import mindustry.world.Block;
 import mindustry.world.Build;
 import mindustry.world.Tile;
@@ -45,17 +47,12 @@ public class Assimilation extends Plugin{
     //register event handlers and create variables in the constructor
     public void init(){
 
-        rules.canGameOver = false;
-        rules.playerDamageMultiplier = 0;
-        rules.playerHealthMultiplier = 1;
-        rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
-        rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
-        rules.buildSpeedMultiplier = 2;
-
+        initRules();
 
         netServer.admins.addActionFilter((action) -> {
             Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
+            if(action.player != null && players.get(action.player.uuid).assimRank == 0) return false;
+
             if (build != null && action.player != null && build.get(0) != null
                     && ((CustomPlayer) build.get(0)).assimRank > players.get(action.player.uuid).assimRank
                     && players.get(action.player.uuid).assimRank < 3) {
@@ -117,8 +114,11 @@ public class Assimilation extends Plugin{
                     ply.setTeam(newTeam);
                     players.get(ply.uuid).lastTeam = newTeam;
                     teams.get(newTeam).addPlayer(ply);
-                    cPly.assimRank = 2;
+                    if(cPly.assimRank > 2){
+                        cPly.assimRank = 2;
+                    }
                     ply.kill();
+                    ply.sendMessage("You should have died and respawned... If you didn't, let me know");
                 }
 
                 teams.remove(oldTeam);
@@ -195,6 +195,12 @@ public class Assimilation extends Plugin{
             cell.makeNexus(players.get(event.player.uuid), false);
         });
 
+        Events.on(EventType.UnitDestroyEvent.class, event ->{
+            if(event.unit instanceof Player && players.get(((Player) event.unit).uuid).assimRank == 0){
+                ((Player) event.unit).mech = Mechs.alpha;
+            }
+        });
+
     }
 
     //register commands that run on the server
@@ -232,11 +238,26 @@ public class Assimilation extends Plugin{
 
     //register commands that player can invoke in-game
     @Override
-    public void registerClientCommands(CommandHandler handler){
+    public void registerClientCommands(CommandHandler handler) {
 
         // Register the re-rank command
-        handler.<Player>register("rerank", "<player> <rank>", "Re-rank a player on your team to 1: Drone, 2: Private or 3: Captain", (args, player) -> {
-            if(players.get(player.uuid).assimRank != 4){
+        handler.<Player>register("rerank", "[player/id] [rank]", "Re-rank a player on your team to [scarlet]0[white]: Bot, [scarlet]1[white]: Drone, [scarlet]2[white]: Private or [scarlet]3[white]: Captain", (args, player) -> {
+            if (args.length == 0) {
+                String s = "[accent]Use [orange]/rerank [player/id] [rank][accent] to re-rank a player to [scarlet]0[accent]: Bot, [scarlet]1[accent]: Drone, [scarlet]2[accent]: Private or [scarlet]3[accent]: Captain\n\n";
+                s += "You are able to rerank the following players:";
+                for (Player ply : Vars.playerGroup) {
+                    if (ply != player && player.getTeam() == players.get(ply.uuid).lastTeam) {
+                        s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
+                    }
+                }
+                player.sendMessage(s);
+                return;
+            }
+            if (args.length == 1) {
+                player.sendMessage("[accent]/rerank expects 2 arguments, [white][player/id] [rank]");
+            }
+
+            if (players.get(player.uuid).assimRank != 4) {
                 player.sendMessage("You can only re-rank players if you are a Commander!\n");
                 return;
             }
@@ -244,18 +265,18 @@ public class Assimilation extends Plugin{
             Player other;
             try {
                 other = Vars.playerGroup.getByID(Integer.parseInt(args[0]));
-            }catch (NumberFormatException e){
+            } catch (NumberFormatException e) {
                 other = null;
             }
 
-            if(other == null){
+            if (other == null) {
                 wasID = false;
                 other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
-                if(other == null){
+                if (other == null) {
                     String s = "[accent]No player by name [white]" + args[0] + "[accent] or id [white]" + args[0] + "[accent].\n";
                     s += "You are able to rerank the following players:";
-                    for(Player ply: Vars.playerGroup){
-                        if(player.getTeam() == players.get(ply.uuid).lastTeam){
+                    for (Player ply : Vars.playerGroup) {
+                        if (ply != player && player.getTeam() == players.get(ply.uuid).lastTeam) {
                             s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
                         }
                     }
@@ -263,41 +284,86 @@ public class Assimilation extends Plugin{
                     return;
                 }
             }
-            if(other == player){
+            if (other == player) {
                 player.sendMessage("[accent]Can not re-rank yourself!");
                 return;
             }
-            if(other.getTeam() != player.getTeam()){
+            if (other.getTeam() != player.getTeam()) {
                 player.sendMessage("[accent]Can not re-rank players outside of your team!");
                 return;
             }
 
             int newRank;
-            try{
+            try {
                 newRank = Integer.parseInt(args[1]);
-            }catch (NumberFormatException e){
-                player.sendMessage("[accent]Rank must be a number from [scarlet]1 to 3[accent].");
+            } catch (NumberFormatException e) {
+                player.sendMessage("[accent]Rank must be a number from [scarlet]0 to 3[accent].");
                 return;
             }
-            if(newRank < 1 || newRank > 3){
-                player.sendMessage("[accent]Rank must be a number from [scarlet]1 to 3[accent].");
+            if (newRank < 0 || newRank > 3) {
+                player.sendMessage("[accent]Rank must be a number from [scarlet]0 to 3[accent].");
                 return;
             }
 
             teams.get(player.getTeam()).rank(players.get(other.uuid), newRank);
+            other.kill();
             String s1 = "[accent]Successfully re-ranked " + (wasID ? "ID: " : "Player: ") + "[white]" + args[0] + "[accent] to rank: [white]";
             String s2 = "[accent]" + player.name + "[accent] has re-ranked you to [white]";
             String append = "";
-            switch(newRank){
-                case 1: append = "Drone"; break;
-                case 2: append = "Private"; break;
-                case 3: append = "Captain"; break;
+            switch (newRank) {
+                case 0:
+                    append = "Bot";
+                    break;
+                case 1:
+                    append = "Drone";
+                    break;
+                case 2:
+                    append = "Private";
+                    break;
+                case 3:
+                    append = "Captain";
+                    break;
             }
             s1 += append;
             s2 += append;
             player.sendMessage(s1);
             other.sendMessage(s2);
         });
+
+        handler.<Player>register("members", "List all the members in your team", (args, player) -> {
+            String s = "[accent]Members:";
+            for (Player ply : teams.get(players.get(player.uuid).lastTeam).players) {
+                s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
+            }
+            player.sendMessage(s);
+        });
+    }
+
+    void initRules(){
+        Weapon useless = new Weapon("prettyShitNGL"){{
+            length = 1.5f;
+            reload = 14f;
+            shots = 0; // get rekt
+            alternate = true;
+            ejectEffect = Fx.shellEjectSmall;
+            bullet = Bullets.standardMechSmall;
+        }};
+
+        Mechs.dart.weapon = useless;
+        Mechs.delta.weapon = useless;
+        Mechs.glaive.weapon = useless;
+        Mechs.javelin.weapon = useless;
+        Mechs.omega.weapon = useless;
+        Mechs.tau.weapon = useless;
+        Mechs.trident.weapon = useless;
+
+        rules.canGameOver = false;
+        rules.playerDamageMultiplier = 100;
+        rules.playerHealthMultiplier = 100;
+        rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
+        rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
+        rules.buildSpeedMultiplier = 2;
     }
 
     void killTiles(Team team){
