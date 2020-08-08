@@ -1,10 +1,9 @@
-package example;
+package assimilation;
 
 import arc.math.Angles;
 import arc.math.geom.Bresenham2;
 import arc.math.geom.Geometry;
 import arc.struct.Array;
-import arc.struct.IntArray;
 import arc.struct.StringMap;
 import arc.util.Structs;
 import arc.util.Tmp;
@@ -13,8 +12,6 @@ import mindustry.maps.Map;
 import mindustry.maps.filters.GenerateFilter;
 import mindustry.maps.filters.OreFilter;
 import mindustry.maps.generators.Generator;
-import mindustry.world.Block;
-import mindustry.world.Pos;
 import mindustry.world.Tile;
 import mindustry.world.blocks.Floor;
 

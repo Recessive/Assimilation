@@ -1,6 +1,5 @@
-package example;
+package assimilation;
 
-import arc.graphics.Color;
 import mindustry.entities.type.Player;
 import mindustry.game.Team;
 
@@ -17,6 +16,7 @@ public class AssimilationTeam{
     public Boolean alive = true;
     protected List<Player> players = new ArrayList<>();
     public List<Cell> capturedCells = new ArrayList<>();
+    public Cell homeCell;
 
     public AssimilationTeam(Player player) {
         this.team = player.getTeam();

@@ -1,7 +1,6 @@
-package example;
+package assimilation;
 
 import mindustry.world.Block;
-import mindustry.world.Tile;
 
 import java.util.HashMap;
 
