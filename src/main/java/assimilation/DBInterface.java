@@ -24,6 +24,15 @@ public class DBInterface {
         }
         System.out.println("Connected to database successfully");
         // Initialise primaryKey
+        setKey();
+    }
+
+    public void connect(Connection c){
+        conn = c;
+        setKey();
+    }
+
+    private void setKey(){
         String sql = "pragma table_info('" + table + "');";
         try {
             Statement stmt  = conn.createStatement();
@@ -31,10 +40,6 @@ public class DBInterface {
             key = rs.getString(2);
         } catch (SQLException ignored) {
         }
-    }
-
-    public void connect(Connection c){
-        conn = c;
     }
 
     public boolean hasRow(String key){

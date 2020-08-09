@@ -45,10 +45,12 @@ public class Assimilation extends Plugin{
     private BuildRecorder recorder = new BuildRecorder();
 
     private DBInterface playerDataDB = new DBInterface("player_data");
+    private DBInterface playerConfigDB = new DBInterface("player_config");
 
     //register event handlers and create variables in the constructor
     public void init(){
         playerDataDB.connect("data/server_data.db");
+        playerConfigDB.connect(playerDataDB.conn);
 
         initRules();
 
@@ -132,7 +134,7 @@ public class Assimilation extends Plugin{
 
                 Call.sendMessage("[accent]" + newTeam.name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + oldTeam.name + "[accent]'s team!");
                 for(Player ply : oldTeam.players){
-                    Log.info("Switching uuid: " + ply.uuid + " to new team...");
+                    Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
                     addPlayerTeam(ply, newTeam);
                 }
 
@@ -168,22 +170,31 @@ public class Assimilation extends Plugin{
         Events.on(EventType.PlayerJoin.class, event ->{
             // Databasing stuff first:
             if(!playerDataDB.hasRow(event.player.uuid)){
+                Log.info("New player, adding to tables...");
                 playerDataDB.addRow(event.player.uuid);
+                playerConfigDB.addRow(event.player.uuid);
             }
             playerDataDB.loadRow(event.player.uuid);
+            playerConfigDB.loadRow(event.player.uuid);
 
-            if(players.containsKey(event.player.uuid) && teams.containsKey(players.get(event.player.uuid).lastTeam)){
+            CustomPlayer ply;
+
+            if(!players.containsKey(event.player.uuid)){
+                ply = new CustomPlayer(event.player, 0, (int) playerDataDB.entries.get(event.player.uuid).get("playtime"));
+                players.put(event.player.uuid, ply);
+            }else{
+                ply = players.get(event.player.uuid);
+            }
+            Call.setHudTextReliable(event.player.con, "[accent]Play time: [scarlet]" + players.get(event.player.uuid).playTime + "[accent] mins.");
+            if(teams.containsKey(players.get(event.player.uuid).lastTeam)){
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
+
                 return;
             }
-
-            CustomPlayer ply = new CustomPlayer(event.player, 0, (int) playerDataDB.entries.get(event.player.uuid).get("playtime"));
-            players.put(event.player.uuid, ply);
-            Call.setHudTextReliable(event.player.con, "[accent]Play time: [scarlet]" + players.get(event.player.uuid).playTime + "[accent] mins.");
-
             // In the event there are no free cells
             if(freeCells.size() == 0){
                 autoBalance(event.player);
+
                 return;
             }
 
@@ -194,11 +205,12 @@ public class Assimilation extends Plugin{
             event.player.setTeam(Team.all()[teamCount+6]);
 
             // Create custom team and add it to the teams hash map
-            AssimilationTeam cTeam = new AssimilationTeam(event.player);
+            AssimilationTeam cTeam = new AssimilationTeam(event.player, (int) playerConfigDB.entries.get(event.player.uuid).get("defaultRank"));
             teams.put(event.player.getTeam(), cTeam);
             // Add player to the custom team
             cTeam.addPlayer(event.player);
             ply.lastTeam = event.player.getTeam();
+
 
             // Determine next free cell randomly
             Collections.shuffle(freeCells);
@@ -206,8 +218,6 @@ public class Assimilation extends Plugin{
             cTeam.capturedCells.add(cell);
             cTeam.homeCell = cell;
             cell.owner = event.player.getTeam();
-
-            // Get custom player object and add player
 
             cell.makeNexus(players.get(event.player.uuid), false);
 
@@ -224,12 +234,12 @@ public class Assimilation extends Plugin{
                 event.player.mech = Mechs.alpha;
             }else if(event.player.mech == Mechs.alpha){
                 event.player.mech = Mechs.dart;
-                event.player.sendMessage("Only drones can become an Alpha");
+                event.player.sendMessage("Only bots can become an Alpha");
             }
         });
 
         Events.on(EventType.PlayerLeave.class, event ->{
-            savePlayerData(event.player);
+            savePlayerData(event.player.uuid);
         });
 
 
@@ -363,12 +373,47 @@ public class Assimilation extends Plugin{
             other.sendMessage(s2);
         });
 
-        handler.<Player>register("members", "List all the members in your team", (args, player) -> {
-            String s = "[accent]Members:";
+        handler.<Player>register("members", "List all the members in your team and their rank", (args, player) -> {
+            String commander = "[accent]Commander:";
+            String captains = "[accent]Captains:";
+            String privates = "[accent]Privates:";
+            String drones = "[accent]Drones:";
+            String bots = "[accent]Bots:";
             for (Player ply : teams.get(players.get(player.uuid).lastTeam).players) {
-                s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
+                CustomPlayer cPly = players.get(ply.uuid);
+                switch(cPly.assimRank){
+                    case 0: bots += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
+                    case 1: drones += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
+                    case 2: privates += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
+                    case 3: captains += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
+                    case 4: commander += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
+                }
             }
-            player.sendMessage(s);
+            player.sendMessage(commander + "\n" + captains + "\n" + privates + "\n" + drones + "\n" + bots);
+        });
+
+        handler.<Player>register("drank", "[rank]", "Set the default rank players have when assimilated into your team", (args, player) ->{
+            if (args.length == 0) {
+                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]0 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]0[accent]: Bot\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
+                return;
+            }
+            int dRank;
+            try {
+                dRank = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]0 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]0[accent]: Bot\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
+                return;
+            }
+
+            if(dRank < 0 || dRank > 3){
+                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]0 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]0[accent]: Bot\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
+                return;
+            }
+
+            playerConfigDB.entries.get(player.uuid).put("defaultRank", dRank);
+            if(players.get(player.uuid).assimRank == 4) teams.get(player.getTeam()).defaultRank = dRank;
+            player.sendMessage("[accent]Successfully updated default rank to [scarlet]" + dRank);
+
         });
 
         handler.<Player>register("kill", "Destroy yourself", (args, player) ->{
@@ -389,7 +434,7 @@ public class Assimilation extends Plugin{
             bullet = Bullets.standardMechSmall;
         }};
 
-        //Mechs.dart.weapon = useless;
+        Mechs.dart.weapon = useless;
         Mechs.delta.weapon = useless;
         Mechs.glaive.weapon = useless;
         Mechs.javelin.weapon = useless;
@@ -398,7 +443,7 @@ public class Assimilation extends Plugin{
         Mechs.trident.weapon = useless;
 
         rules.canGameOver = false;
-        rules.playerDamageMultiplier = 100;
+        rules.playerDamageMultiplier = 1;
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
@@ -424,13 +469,12 @@ public class Assimilation extends Plugin{
         player.setTeam(newTeam.team);
         players.get(player.uuid).lastTeam = newTeam.team;
         newTeam.addPlayer(player);
-        if(cPly.assimRank > 2){
-            cPly.assimRank = 2;
+        int dRank = newTeam.defaultRank;
+        if(cPly.assimRank > dRank){
+            cPly.assimRank = dRank;
         }
         player.kill();
-        players.get(player.uuid).assimRank = 2;
 
-        newTeam.addPlayer(player);
     }
 
     void killTiles(Team team){
@@ -448,12 +492,19 @@ public class Assimilation extends Plugin{
         Call.onInfoMessage(winner + "[accent]'s team has conquered the planet! Loading the next world...");
         String winPlayer = teams.get(teams.keySet().toArray()[0]).commander.uuid;
         CustomPlayer ply = players.get(winPlayer);
+        if(!playerDataDB.entries.containsKey(winPlayer)){
+            playerDataDB.loadRow(winPlayer);
+        }
         HashMap<String, Object> entry = playerDataDB.entries.get(winPlayer);
         entry.put("monthWins", (int) entry.get("monthWins") + 1);
         entry.put("allWins", (int) entry.get("allWins") + 1);
         Time.runTask(60f * 10f, () -> {
+
+            for(Object uuid: playerDataDB.entries.keySet().toArray().clone()){
+                savePlayerData((String) uuid);
+            }
+
             for(Player player : playerGroup.all()) {
-                savePlayerData(player);
                 Call.onConnect(player.con, "aamindustry.play.ai", 6567);
             }
             // I shouldn't need this, all players should be gone since I connected them to hub
@@ -462,9 +513,10 @@ public class Assimilation extends Plugin{
         });
     }
 
-    void savePlayerData(Player player){
-        CustomPlayer ply = players.get(player.uuid);
-        playerDataDB.entries.get(player.uuid).put("playtime", ply.playTime);
-        playerDataDB.saveRow(player.uuid);
+    void savePlayerData(String uuid){
+        CustomPlayer ply = players.get(uuid);
+        playerDataDB.entries.get(uuid).put("playtime", ply.playTime);
+        playerDataDB.saveRow(uuid);
+        playerConfigDB.saveRow(uuid);
     }
 }

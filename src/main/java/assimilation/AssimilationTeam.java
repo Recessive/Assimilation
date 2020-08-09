@@ -10,6 +10,7 @@ public class AssimilationTeam{
     protected Team team;
     protected String name;
     protected Player commander;
+    protected int defaultRank;
     protected List<Player> captains = new ArrayList<>();
     protected List<Player> privates = new ArrayList<>();
     protected List<Player> drones = new ArrayList<>();
@@ -18,10 +19,11 @@ public class AssimilationTeam{
     public List<Cell> capturedCells = new ArrayList<>();
     public Cell homeCell;
 
-    public AssimilationTeam(Player player) {
+    public AssimilationTeam(Player player, int defaultRank) {
         this.team = player.getTeam();
         this.name = player.name;
         this.commander = player;
+        this.defaultRank = defaultRank;
     }
 
     public void addPlayer(Player ply){
