@@ -18,9 +18,9 @@ import mindustry.type.Weapon;
 import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.storage.CoreBlock;
-import org.sqlite.core.DB;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static mindustry.Vars.*;
 
@@ -264,6 +264,8 @@ public class Assimilation extends Plugin{
             state.rules = rules.copy();
             logic.play();
 
+            int cellLimit = 5;
+
 
             for(Tuple<Integer, Integer> cell : generator.getCells()){
                 Cell c = new Cell((int) cell.get(0), (int) cell.get(1), recorder, players);
@@ -271,6 +273,10 @@ public class Assimilation extends Plugin{
                 c.makeNexus(null, true);
                 cells.add(c);
                 freeCells.add(c);
+                cellLimit -= 1;
+                if(cellLimit <= 0){
+                    break;
+                }
             }
 
             netServer.openServer();
@@ -434,7 +440,7 @@ public class Assimilation extends Plugin{
             bullet = Bullets.standardMechSmall;
         }};
 
-        Mechs.dart.weapon = useless;
+        //Mechs.dart.weapon = useless;
         Mechs.delta.weapon = useless;
         Mechs.glaive.weapon = useless;
         Mechs.javelin.weapon = useless;
@@ -443,7 +449,7 @@ public class Assimilation extends Plugin{
         Mechs.trident.weapon = useless;
 
         rules.canGameOver = false;
-        rules.playerDamageMultiplier = 1;
+        rules.playerDamageMultiplier = 1000;
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
@@ -494,23 +500,30 @@ public class Assimilation extends Plugin{
         CustomPlayer ply = players.get(winPlayer);
         if(!playerDataDB.entries.containsKey(winPlayer)){
             playerDataDB.loadRow(winPlayer);
+            playerConfigDB.loadRow(winPlayer);
         }
         HashMap<String, Object> entry = playerDataDB.entries.get(winPlayer);
         entry.put("monthWins", (int) entry.get("monthWins") + 1);
         entry.put("allWins", (int) entry.get("allWins") + 1);
-        Time.runTask(60f * 10f, () -> {
 
-            for(Object uuid: playerDataDB.entries.keySet().toArray().clone()){
-                savePlayerData((String) uuid);
-            }
+        Time.runTask(60f * 10f, () -> {
 
             for(Player player : playerGroup.all()) {
                 Call.onConnect(player.con, "aamindustry.play.ai", 6567);
             }
+
+            // in case any was missed
+            for(Object uuid: playerDataDB.entries.keySet().toArray().clone()){
+                savePlayerData((String) uuid);
+            }
+
             // I shouldn't need this, all players should be gone since I connected them to hub
             // netServer.kickAll(KickReason.serverRestarting);
+            Log.info("Game ended successfully.");
             Time.runTask(5f, () -> System.exit(2));
         });
+
+
     }
 
     void savePlayerData(String uuid){
