@@ -265,6 +265,7 @@ public class Assimilation extends Plugin{
 
         Events.on(EventType.PlayerLeave.class, event ->{
             savePlayerData(event.player.uuid);
+
         });
 
 
@@ -338,6 +339,30 @@ public class Assimilation extends Plugin{
             }
             Log.info("Set uuid " + args[0] + " to have play time of " + args[1] + " minutes");
 
+        });
+
+        handler.register("endgame", "Ends the game", args ->{
+            Call.sendMessage("[scarlet]Server [accent]has force ended the game. Ending in 10 seconds...");
+
+            Log.info("Ending game...");
+            Time.runTask(60f * 10f, () -> {
+
+                for(Player player : playerGroup.all()) {
+                    Call.onConnect(player.con, "aamindustry.play.ai", 6567);
+                }
+
+                // in case any was missed (give a delay so players all leave)
+                Time.runTask(60f * 1, () -> {
+                    for(Object uuid: playerDataDB.entries.keySet().toArray().clone()){
+                        savePlayerData((String) uuid);
+                    }
+                });
+
+                // I shouldn't need this, all players should be gone since I connected them to hub
+                // netServer.kickAll(KickReason.serverRestarting);
+                Log.info("Game ended successfully.");
+                Time.runTask(5f, () -> System.exit(2));
+            });
         });
 
         handler.register("setxp", "<uuid> <playtime>", "Set the xp of a player", args -> {
@@ -645,10 +670,13 @@ public class Assimilation extends Plugin{
                 Call.onConnect(player.con, "aamindustry.play.ai", 6567);
             }
 
-            // in case any was missed
-            for(Object uuid: playerDataDB.entries.keySet().toArray().clone()){
-                savePlayerData((String) uuid);
-            }
+            // in case any was missed (give a delay so players all leave)
+            Time.runTask(60f * 1, () -> {
+                for(Object uuid: playerDataDB.entries.keySet().toArray().clone()){
+                    savePlayerData((String) uuid);
+                }
+            });
+
 
             // I shouldn't need this, all players should be gone since I connected them to hub
             // netServer.kickAll(KickReason.serverRestarting);
