@@ -20,11 +20,13 @@ import mindustry.world.Tile;
 import mindustry.world.blocks.storage.CoreBlock;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.prefs.Preferences;
 
 import static mindustry.Vars.*;
 
 public class Assimilation extends Plugin{
+
+    private Preferences prefs;
 
     public int teamCount = 0;
 
@@ -46,6 +48,8 @@ public class Assimilation extends Plugin{
 
     private DBInterface playerDataDB = new DBInterface("player_data");
     private DBInterface playerConfigDB = new DBInterface("player_config");
+
+    private StringHandler stringHandler = new StringHandler();
 
     //register event handlers and create variables in the constructor
     public void init(){
@@ -95,17 +99,6 @@ public class Assimilation extends Plugin{
         Events.on(Cell.CellCaptureEvent.class, event ->{
             event.cell.makeShard();
             freeCells.remove(event.cell);
-            boolean allCapped = true;
-            for(Cell cell : cells){
-                if(cell.owner != event.cell.owner){
-                    allCapped = false;
-                    break;
-                }
-            }
-
-            if(allCapped) {
-                endgame(teams.get(event.cell.owner).name);
-            }
         });
 
         Events.on(EventType.BlockDestroyEvent.class, event ->{
@@ -133,10 +126,21 @@ public class Assimilation extends Plugin{
                 AssimilationTeam newTeam = teams.get(temp_newTeam);
 
                 Call.sendMessage("[accent]" + newTeam.name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + oldTeam.name + "[accent]'s team!");
+                // Add XP to players in the team that did the assimilating
+                for(Player ply : newTeam.players){
+                    ply.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + oldTeam.name + "[accent]'s team!");
+                    playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 100);
+                }
+
                 for(Player ply : oldTeam.players){
+                    newTeam.commander.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + ply.name);
+                    playerDataDB.entries.get(newTeam.commander.uuid).put("xp", (int) playerDataDB.entries.get(newTeam.commander.uuid).get("xp") + 100);
+
                     Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
                     addPlayerTeam(ply, newTeam);
                 }
+
+
 
 
                 eventCell.owner = null;
@@ -154,6 +158,11 @@ public class Assimilation extends Plugin{
             }
 
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
+
+                for(Player ply : teams.get(event.tile.entity.lastHit).players){
+                    ply.sendMessage("[accent]+[scarlet]10xp[accent] for clearing a crux a cell");
+                    playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 10);
+                }
                 eventCell.clearCell();
                 freeCells.remove(eventCell);
                 if(teams.keySet().size() == 1 && Team.crux.cores().size == 1){
@@ -167,6 +176,14 @@ public class Assimilation extends Plugin{
 
         });
 
+        Events.on(EventType.PlayerConnect.class, event->{
+            for(String swear : stringHandler.badNames){
+                if(Strings.stripColors(event.player.name.toLowerCase()).contains(swear) && !event.player.uuid.equals("rJ2w2dsR3gQAAAAAfJfvXA==")){
+                    event.player.name = event.player.name.replaceAll("(?i)" + swear, "");
+                }
+            }
+        });
+
         Events.on(EventType.PlayerJoin.class, event ->{
             // Databasing stuff first:
             if(!playerDataDB.hasRow(event.player.uuid)){
@@ -176,6 +193,10 @@ public class Assimilation extends Plugin{
             }
             playerDataDB.loadRow(event.player.uuid);
             playerConfigDB.loadRow(event.player.uuid);
+
+            // Determine rank and save name to database
+            event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + event.player.name;
+            playerDataDB.entries.get(event.player.uuid).put("latestName", event.player.name);
 
             CustomPlayer ply;
 
@@ -279,8 +300,22 @@ public class Assimilation extends Plugin{
                 }
             }
 
+            prefs = Preferences.userRoot().node(this.getClass().getName());
+            int prevMonth = prefs.getInt("month", 1);
+            int currMonth = Calendar.getInstance().get(Calendar.MONTH);
+
+            if(prevMonth != currMonth){
+                rankReset();
+                Log.info("New month, ranks are reset automatically...");
+            }
+            prefs.putInt("month", currMonth);
             netServer.openServer();
 
+        });
+
+        handler.register("reset_ranks", "Sets all xp to 0.", args ->{
+            rankReset();
+            Log.info("Ranks reset.");
         });
     }
 
@@ -422,8 +457,16 @@ public class Assimilation extends Plugin{
 
         });
 
+        handler.<Player>register("xp", "Show your xp", (args, player) ->{
+            player.sendMessage("[scarlet]xp[accent]: " + playerDataDB.entries.get(player.uuid).get("xp"));
+        });
+
         handler.<Player>register("kill", "Destroy yourself", (args, player) ->{
             player.kill();
+        });
+
+        handler.<Player>register("hub", "Connect to the AA hub server", (args, player) -> {
+            Call.onConnect(player.con, "aamindustry.play.ai", 6567);
         });
 
     }
@@ -505,6 +548,13 @@ public class Assimilation extends Plugin{
         HashMap<String, Object> entry = playerDataDB.entries.get(winPlayer);
         entry.put("monthWins", (int) entry.get("monthWins") + 1);
         entry.put("allWins", (int) entry.get("allWins") + 1);
+        entry.put("xp", (int) entry.get("xp") + 500);
+        for(Player player: playerGroup.all()){
+            if(player.uuid.equals(winPlayer)){
+                player.sendMessage("[accent]+[scarlet]500xp[accent] for winning");
+            }
+        }
+
 
         Time.runTask(60f * 10f, () -> {
 
@@ -531,5 +581,12 @@ public class Assimilation extends Plugin{
         playerDataDB.entries.get(uuid).put("playtime", ply.playTime);
         playerDataDB.saveRow(uuid);
         playerConfigDB.saveRow(uuid);
+    }
+
+    // All long term stuff here:
+
+    void rankReset(){
+        // Reset ranks
+        playerDataDB.setColumn("xp", 0);
     }
 }

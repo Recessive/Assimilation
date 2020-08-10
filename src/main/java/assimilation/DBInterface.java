@@ -129,4 +129,25 @@ public class DBInterface {
         }
 
     }
+
+    // Large scale modifications
+
+    public void setColumn(String col, Object value){
+        // Sets an entire column to the provided value
+        try {
+            String sql = "UPDATE " + this.table + " SET " + col + " = ";
+            if (value instanceof String) {
+                sql += "'" + value + "'";
+            } else if (value instanceof Boolean) {
+                sql += ((boolean) value ? 1 : 0);
+            } else {
+                sql += value;
+            }
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(sql);
+            stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 }
