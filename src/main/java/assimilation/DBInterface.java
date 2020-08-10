@@ -1,6 +1,7 @@
 package assimilation;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class DBInterface {
@@ -128,6 +129,15 @@ public class DBInterface {
             e.printStackTrace();
         }
 
+    }
+
+    public ResultSet customQuery(String query){
+        try {
+            return conn.prepareStatement(query).executeQuery();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     // Large scale modifications

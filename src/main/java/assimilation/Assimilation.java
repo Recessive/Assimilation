@@ -19,6 +19,8 @@ import mindustry.world.Block;
 import mindustry.world.Tile;
 import mindustry.world.blocks.storage.CoreBlock;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.*;
 import java.util.prefs.Preferences;
 
@@ -242,6 +244,8 @@ public class Assimilation extends Plugin{
 
             cell.makeNexus(players.get(event.player.uuid), false);
 
+            event.player.sendMessage(leaderboard(5));
+
         });
 
         Events.on(EventType.UnitDestroyEvent.class, event ->{
@@ -306,16 +310,76 @@ public class Assimilation extends Plugin{
 
             if(prevMonth != currMonth){
                 rankReset();
-                Log.info("New month, ranks are reset automatically...");
+                winsReset();
+                Log.info("New month, ranks and monthly wins are reset automatically...");
             }
             prefs.putInt("month", currMonth);
             netServer.openServer();
 
         });
 
+        handler.register("setplaytime", "<uuid> <playtime>", "Set the play time of a player", args -> {
+            int newTime;
+            try{
+                newTime = Integer.parseInt(args[1]);
+            }catch(NumberFormatException e){
+                Log.info("Invalid playtime input '" + args[1] + "'");
+                return;
+            }
+
+            if(!playerDataDB.entries.containsKey(args[0])){
+                playerDataDB.loadRow(args[0]);
+                playerDataDB.entries.get(args[0]).put("playtime", newTime);
+                playerDataDB.saveRow(args[0]);
+            }else{
+                Player player = players.get(args[0]).player;
+                players.get(args[0]).playTime = newTime;
+                Call.setHudTextReliable(player.con, "[accent]Play time: [scarlet]" + players.get(player.uuid).playTime + "[accent] mins.");
+            }
+            Log.info("Set uuid " + args[0] + " to have play time of " + args[1] + " minutes");
+
+        });
+
+        handler.register("setxp", "<uuid> <playtime>", "Set the xp of a player", args -> {
+            int newXp;
+            try{
+                newXp = Integer.parseInt(args[1]);
+            }catch(NumberFormatException e){
+                Log.info("Invalid xp input '" + args[1] + "'");
+                return;
+            }
+
+            if(!playerDataDB.entries.containsKey(args[0])){
+                playerDataDB.loadRow(args[0]);
+                playerDataDB.entries.get(args[0]).put("xp", newXp);
+                playerDataDB.saveRow(args[0]);
+            }else{
+                playerDataDB.entries.get(args[0]).put("xp", newXp);
+            }
+            Log.info("Set uuid " + args[0] + " to have xp of " + args[1]);
+
+        });
+
         handler.register("reset_ranks", "Sets all xp to 0.", args ->{
             rankReset();
             Log.info("Ranks reset.");
+        });
+
+        handler.register("reset_wins", "Sets all monthWins to 0.", args ->{
+            winsReset();
+            Log.info("Monthly wins reset.");
+        });
+
+
+        handler.register("crash", "<name/uuid>", "Crashes the name/uuid", args ->{
+            for(Player player : playerGroup.all()){
+                if(player.uuid.equals(args[0]) || Strings.stripColors(player.name).equals(args[0])){
+                    player.sendMessage(null);
+                    Log.info("Done.");
+                    return;
+                }
+            }
+            Log.info("Player not found!");
         });
     }
 
@@ -461,6 +525,10 @@ public class Assimilation extends Plugin{
             player.sendMessage("[scarlet]xp[accent]: " + playerDataDB.entries.get(player.uuid).get("xp"));
         });
 
+        handler.<Player>register("leaderboard", "Displays leaderboard", (args, player) ->{
+            player.sendMessage(leaderboard(5));
+        });
+
         handler.<Player>register("kill", "Destroy yourself", (args, player) ->{
             player.kill();
         });
@@ -537,6 +605,21 @@ public class Assimilation extends Plugin{
         }
     }
 
+    String leaderboard(int limit){
+        ResultSet rs = playerDataDB.customQuery("select * from player_data order by allWins limit " + limit);
+        String s = "[accent]Leaderboard:\n";
+        try{
+            int i = 0;
+            while(rs.next()){
+                i ++;
+                s += "\n[gold]" + (i) + "[white]:" + rs.getString("latestName") + "[accent]: [gold]" + rs.getString("monthWins") + "[accent] wins";
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return s;
+    }
+
     void endgame(String winner){
         Call.onInfoMessage(winner + "[accent]'s team has conquered the planet! Loading the next world...");
         String winPlayer = teams.get(teams.keySet().toArray()[0]).commander.uuid;
@@ -588,5 +671,17 @@ public class Assimilation extends Plugin{
     void rankReset(){
         // Reset ranks
         playerDataDB.setColumn("xp", 0);
+
+        for(Object uuid: playerDataDB.entries.keySet().toArray()){
+            playerDataDB.entries.get(uuid).put("xp", 0);
+        }
+    }
+
+    void winsReset(){
+        playerDataDB.setColumn("monthWins", 0);
+
+        for(Object uuid: playerDataDB.entries.keySet().toArray()){
+            playerDataDB.entries.get(uuid).put("monthWins", 0);
+        }
     }
 }
