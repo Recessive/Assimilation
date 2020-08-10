@@ -264,7 +264,7 @@ public class Assimilation extends Plugin{
             state.rules = rules.copy();
             logic.play();
 
-            int cellLimit = 5;
+            int cellLimit = 1000;
 
 
             for(Tuple<Integer, Integer> cell : generator.getCells()){
@@ -440,7 +440,7 @@ public class Assimilation extends Plugin{
             bullet = Bullets.standardMechSmall;
         }};
 
-        //Mechs.dart.weapon = useless;
+        Mechs.dart.weapon = useless;
         Mechs.delta.weapon = useless;
         Mechs.glaive.weapon = useless;
         Mechs.javelin.weapon = useless;
@@ -449,7 +449,7 @@ public class Assimilation extends Plugin{
         Mechs.trident.weapon = useless;
 
         rules.canGameOver = false;
-        rules.playerDamageMultiplier = 1000;
+        rules.playerDamageMultiplier = 1;
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
