@@ -220,10 +220,15 @@ public class Assimilation extends Plugin{
             if(teams.containsKey(players.get(event.player.uuid).lastTeam)){
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
 
-                // Remove old player object and replace with new one
-                teams.get(players.get(event.player.uuid).lastTeam).players.removeIf(player -> player.uuid.equals(event.player.uuid));
-                teams.get(players.get(event.player.uuid).lastTeam).players.add(event.player);
+                AssimilationTeam oldTeam = teams.get(players.get(event.player.uuid).lastTeam);
 
+                // Remove old player object and replace with new one
+                oldTeam.players.removeIf(player -> player.uuid.equals(event.player.uuid));
+                oldTeam.players.add(event.player);
+
+                if(oldTeam.commander.uuid.equals(event.player.uuid)){
+                    oldTeam.commander = event.player;
+                }
                 return;
             }
             // In the event there are no free cells
