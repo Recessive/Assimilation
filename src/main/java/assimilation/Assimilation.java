@@ -130,13 +130,17 @@ public class Assimilation extends Plugin{
                 Call.sendMessage("[accent]" + newTeam.name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + oldTeam.name + "[accent]'s team!");
                 // Add XP to players in the team that did the assimilating
                 for(Player ply : newTeam.players){
-                    ply.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + oldTeam.name + "[accent]'s team!");
-                    playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 100);
+                    if(playerDataDB.entries.containsKey(ply.uuid)) {
+                        ply.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + oldTeam.name + "[accent]'s team!");
+                        playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 100);
+                    }
                 }
 
                 for(Player ply : oldTeam.players){
-                    newTeam.commander.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + ply.name);
-                    playerDataDB.entries.get(newTeam.commander.uuid).put("xp", (int) playerDataDB.entries.get(newTeam.commander.uuid).get("xp") + 100);
+                    if(playerDataDB.entries.containsKey(newTeam.commander.uuid)){
+                        newTeam.commander.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + ply.name);
+                        playerDataDB.entries.get(newTeam.commander.uuid).put("xp", (int) playerDataDB.entries.get(newTeam.commander.uuid).get("xp") + 100);
+                    }
 
                     Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
                     addPlayerTeam(ply, newTeam);
@@ -162,8 +166,10 @@ public class Assimilation extends Plugin{
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
 
                 for(Player ply : teams.get(event.tile.entity.lastHit).players){
-                    ply.sendMessage("[accent]+[scarlet]10xp[accent] for clearing a crux a cell");
-                    playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 10);
+                    if(playerDataDB.entries.containsKey(ply.uuid)){
+                        ply.sendMessage("[accent]+[scarlet]10xp[accent] for clearing a crux a cell");
+                        playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 10);
+                    }
                 }
                 eventCell.clearCell();
                 freeCells.remove(eventCell);
@@ -200,6 +206,8 @@ public class Assimilation extends Plugin{
             event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + event.player.name;
             playerDataDB.entries.get(event.player.uuid).put("latestName", event.player.name);
 
+            event.player.sendMessage(leaderboard(5));
+
             CustomPlayer ply;
 
             if(!players.containsKey(event.player.uuid)){
@@ -211,6 +219,10 @@ public class Assimilation extends Plugin{
             Call.setHudTextReliable(event.player.con, "[accent]Play time: [scarlet]" + players.get(event.player.uuid).playTime + "[accent] mins.");
             if(teams.containsKey(players.get(event.player.uuid).lastTeam)){
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
+
+                // Remove old player object and replace with new one
+                teams.get(players.get(event.player.uuid).lastTeam).players.removeIf(player -> player.uuid.equals(event.player.uuid));
+                teams.get(players.get(event.player.uuid).lastTeam).players.add(event.player);
 
                 return;
             }
@@ -243,8 +255,6 @@ public class Assimilation extends Plugin{
             cell.owner = event.player.getTeam();
 
             cell.makeNexus(players.get(event.player.uuid), false);
-
-            event.player.sendMessage(leaderboard(5));
 
         });
 
