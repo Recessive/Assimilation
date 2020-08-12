@@ -9,6 +9,7 @@ public class CustomPlayer{
     public Team lastTeam;
     protected Player player;
     protected int playTime;
+    public boolean connected;
 
 
     public CustomPlayer(Player player, int assimRank, int playTime){
@@ -17,6 +18,7 @@ public class CustomPlayer{
         this.lastTeam = player.getTeam();
         this.assimRank = 4;
         this.playTime = playTime;
+        this.connected = true;
     }
 
 }

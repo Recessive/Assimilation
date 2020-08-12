@@ -140,6 +140,16 @@ public class DBInterface {
         return null;
     }
 
+    public void customUpdate(String update){
+        try {
+            Statement stmt = conn.createStatement();
+            stmt.executeUpdate(update);
+            stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // Large scale modifications
 
     public void setColumn(String col, Object value){

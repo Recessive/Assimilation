@@ -25,4 +25,8 @@ public class StringHandler {
         return "[accent]<[#660066]Grand Master[accent]>[white]";
     }
 
+    public final String donatorMessagePrefix(int donatorLevel){
+        return null;
+    }
+
 }
