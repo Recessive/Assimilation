@@ -56,7 +56,7 @@ public class Cell {
     }
 
     public void makeShard(){
-        clearSpace(Blocks.coreShard.size + 1);
+        clearSpace(Blocks.coreShard.size);
         Tile coreTile = world.tile(x, y);
         coreTile.link().removeNet();
         coreTile.setNet(Blocks.coreShard, owner, 0);
@@ -64,8 +64,8 @@ public class Cell {
     }
 
     public void clearSpace(int size){
-        for(int xi = -size/2; xi < size/2; xi++){
-            for(int yi = -size/2; yi < size/2; yi ++){
+        for(int xi = -size/2; xi < size/2+1; xi++){
+            for(int yi = -size/2; yi < size/2+1; yi ++){
                 world.tile(x+xi, y+yi).link().removeNet();
             }
         }

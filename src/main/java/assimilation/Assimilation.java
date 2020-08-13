@@ -206,17 +206,30 @@ public class Assimilation extends Plugin{
             playerDataDB.loadRow(event.player.uuid);
             playerConfigDB.loadRow(event.player.uuid);
 
+            // Check for donation expiration
+            int dLevel = (int) playerDataDB.entries.get(event.player.uuid).get("donatorLevel");
+            if(dLevel != 0 && donationExpired(event.player.uuid)){
+                event.player.sendMessage("\n[accent]You're donator rank has expired!");
+                playerDataDB.entries.get(event.player.uuid).put("donatorLevel", 0);
+                dLevel = 0;
+            }
+
             // Determine rank and save name to database
-            event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + Strings.stripColors(event.player.name);
+            if(dLevel == 1){
+                event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " [#4d004d]{[sky]Donator[#4d004d]} [white]" + Strings.stripColors(event.player.name);
+            }else if(dLevel == 2){
+                event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " [#4d004d]{[sky]Donator[gold]+[#4d004d]} [sky]" + Strings.stripColors(event.player.name);
+            }else{
+                event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + Strings.stripColors(event.player.name);
+            }
+
+
+
             playerDataDB.entries.get(event.player.uuid).put("latestName", event.player.name);
 
             event.player.sendMessage(leaderboard(5));
 
-            // Check for donation expiration
-            if((int) playerDataDB.entries.get(event.player.uuid).get("donatorLevel") != 0 && donationExpired(event.player.uuid)){
-                event.player.sendMessage("\n[accent]You're donator rank has expired!");
-                playerDataDB.entries.get(event.player.uuid).put("donatorLevel", 0);
-            }
+
 
             CustomPlayer ply;
 
@@ -669,7 +682,7 @@ public class Assimilation extends Plugin{
     }
 
     String leaderboard(int limit){
-        ResultSet rs = playerDataDB.customQuery("select * from player_data order by allWins limit " + limit);
+        ResultSet rs = playerDataDB.customQuery("select * from player_data order by allWins desc limit " + limit);
         String s = "[accent]Leaderboard:\n";
         try{
             int i = 0;

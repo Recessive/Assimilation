@@ -10,6 +10,7 @@ public class CustomPlayer{
     protected Player player;
     protected int playTime;
     public boolean connected;
+    public int donateLevel = 0;
 
 
     public CustomPlayer(Player player, int assimRank, int playTime){
