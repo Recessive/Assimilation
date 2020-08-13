@@ -11,6 +11,7 @@ public class CustomPlayer{
     protected int playTime;
     public boolean connected;
     public int donateLevel = 0;
+    public int respawns = 2;
 
 
     public CustomPlayer(Player player, int assimRank, int playTime){

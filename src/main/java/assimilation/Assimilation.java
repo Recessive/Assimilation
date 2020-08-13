@@ -75,6 +75,17 @@ public class Assimilation extends Plugin{
             }
             return true;
         });
+
+        Events.on(EventType.PlayerConnect.class, event ->{
+            for(Player ply : playerGroup.all()){
+                if(event.player.uuid.equals(ply.uuid)){
+                    Call.onInfoMessage("[scarlet]Already connected to this server");
+                    Call.onConnect(event.player.con, "aamindustry.play.ai", 6567);
+                    return;
+                }
+            }
+        });
+
         Events.on(EventType.Trigger.class, event ->{
             counter += Time.delta();
             if(Math.round(counter) % (60*60) == 0){
@@ -119,47 +130,8 @@ public class Assimilation extends Plugin{
 
             // Check for team elimination (when nucleus is destroyed)
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() != Team.crux){
-                AssimilationTeam oldTeam = teams.get(event.tile.getTeam());
-                Team temp_newTeam = event.tile.entity.lastHit;
-                teams.remove(oldTeam.team);
-                if(temp_newTeam == null || !teams.containsKey(temp_newTeam) || teams.get(temp_newTeam) == null){
-                    Call.sendMessage(oldTeam.name + "[accent]'s team has died to mysterious means... Distributing players evenly");
-                    for(Player ply : oldTeam.players){
-                        autoBalance(ply);
-                    }
-                    return;
-                }
-                AssimilationTeam newTeam = teams.get(temp_newTeam);
-
-                Call.sendMessage("[accent]" + newTeam.name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + oldTeam.name + "[accent]'s team!");
-                // Add XP to players in the team that did the assimilating
-                for(Player ply : newTeam.players){
-                    if(players.get(ply.uuid).connected) {
-                        ply.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + oldTeam.name + "[accent]'s team!");
-                        playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 100);
-                    }
-                }
-
-                for(Player ply : oldTeam.players){
-                    if(players.get(newTeam.commander.uuid).connected){
-                        newTeam.commander.sendMessage("[accent]+[scarlet]100xp[accent] for assimilating " + ply.name);
-                        playerDataDB.entries.get(newTeam.commander.uuid).put("xp", (int) playerDataDB.entries.get(newTeam.commander.uuid).get("xp") + 100);
-                    }
-
-                    Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
-                    addPlayerTeam(ply, newTeam);
-                }
-
-
-
-
                 eventCell.owner = null;
-                killTiles(oldTeam.team);
-
-                if(teams.keySet().size() == 1 && Team.crux.cores().size == 0){
-                    endgame(teams.get(teams.keySet().toArray()[0]).name);
-                }
-
+                if(teams.containsKey(event.tile.getTeam())) assimilate(event.tile.getTeam(), event.tile.entity.lastHit);
             }
 
             // Check for cell destruction and clear the cell
@@ -171,8 +143,9 @@ public class Assimilation extends Plugin{
 
                 for(Player ply : teams.get(event.tile.entity.lastHit).players){
                     if(players.get(ply.uuid).connected){
-                        ply.sendMessage("[accent]+[scarlet]10xp[accent] for clearing a crux a cell");
-                        playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + 10);
+                        int addXp = 10*(players.get(ply.uuid).donateLevel+1);
+                        ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
+                        playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
                     }
                 }
                 eventCell.clearCell();
@@ -215,14 +188,8 @@ public class Assimilation extends Plugin{
             }
 
             // Determine rank and save name to database
-            if(dLevel == 1){
-                event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " [#4d004d]{[sky]Donator[#4d004d]} [white]" + Strings.stripColors(event.player.name);
-            }else if(dLevel == 2){
-                event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " [#4d004d]{[sky]Donator[gold]+[#4d004d]} [sky]" + Strings.stripColors(event.player.name);
-            }else{
-                event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + Strings.stripColors(event.player.name);
-            }
 
+            event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + stringHandler.donatorMessagePrefix(dLevel) + Strings.stripColors(event.player.name);
 
 
             playerDataDB.entries.get(event.player.uuid).put("latestName", event.player.name);
@@ -239,7 +206,9 @@ public class Assimilation extends Plugin{
             }else{
                 ply = players.get(event.player.uuid);
             }
+            ply.donateLevel = dLevel;
             ply.connected = true;
+            ply.player = event.player;
             Call.setHudTextReliable(event.player.con, "[accent]Play time: [scarlet]" + players.get(event.player.uuid).playTime + "[accent] mins.");
             if(teams.containsKey(players.get(event.player.uuid).lastTeam)){
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
@@ -598,15 +567,133 @@ public class Assimilation extends Plugin{
         });
 
         handler.<Player>register("xp", "Show your xp", (args, player) ->{
-            player.sendMessage("[scarlet]xp[accent]: " + playerDataDB.entries.get(player.uuid).get("xp"));
+            int xp = (int) playerDataDB.entries.get(player.uuid).get("xp");
+            String nextRank = stringHandler.determineRank(xp+5000);
+            player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/5000+1)*5000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
         });
 
         handler.<Player>register("leaderboard", "Displays leaderboard", (args, player) ->{
             player.sendMessage(leaderboard(5));
         });
 
-        handler.<Player>register("kill", "Destroy yourself", (args, player) ->{
+
+
+        handler.<Player>register("donate", "Donate to the server", (args, player) -> {
+            player.sendMessage("[accent]Donate to gain [green]double xp[accent], the ability to " +
+                    "[green]start events[accent] and [green]donator commands[accent]!\n\nYou can donate at:\n" +
+                    "[gold]Donator [scarlet]1[accent]: https://shoppy.gg/product/i4PeGjP\n" +
+                    "[gold]Donator [scarlet]2[accent]: https://shoppy.gg/product/x1tMDJE\n\nThese links are also on the discord server");
+        });
+
+        handler.<Player>register("kill", "[sky]Destroy yourself (donator only)", (args, player) ->{
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
+                return;
+            }
             player.kill();
+        });
+
+        handler.<Player>register("tp", "[player/id]", "[sky]Teleport to player (donator only)", (args, player) -> {
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
+                return;
+            }
+
+            if (args.length == 0) {
+                String s = "[accent]Use [orange]/tp [player/id][accent] to teleport to a players location.\n";
+                s += "You are able to tp to the following players:";
+                for (Player ply : Vars.playerGroup) {
+                    s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
+                }
+                player.sendMessage(s);
+                return;
+            }
+
+            Player other;
+            try {
+                other = Vars.playerGroup.getByID(Integer.parseInt(args[0]));
+            } catch (NumberFormatException e) {
+                other = null;
+            }
+
+            if (other == null) {
+                other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
+                if (other == null) {
+                    String s = "[accent]No player by name [white]" + args[0] + "[accent] or id [white]" + args[0] + "[accent].\n";
+                    s += "You are able to tp to the following players:";
+                    for (Player ply : Vars.playerGroup) {
+                        s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
+                    }
+                    player.sendMessage(s);
+                    return;
+                }
+            }
+            Call.onPositionSet(player.con, other.x, other.y);
+
+            Log.info(player.x + ", " + player.y);
+
+
+
+            player.sendMessage("[accent]Tp'd you to [white]" + other.name);
+
+
+        });
+
+        handler.<Player>register("join", "[player/id]", "[sky]Assimilate into another players team (donator only)", (args, player) -> {
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
+                return;
+            }
+
+            AssimilationTeam thisTeam = teams.get(player.getTeam());
+
+            if (args.length == 0) {
+                String s = "[accent]Use [orange]/join [player/id][accent] to join a players team.\n";
+                s += "You are able to join the following players:";
+                for (Player ply : Vars.playerGroup) {
+                    if(teams.get(ply.getTeam()) != thisTeam) {
+                        s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id + ", Team: " + teams.get(ply.getTeam()).team.name;
+                    }
+                }
+                player.sendMessage(s);
+                return;
+            }
+
+            Player other;
+            try {
+                other = Vars.playerGroup.getByID(Integer.parseInt(args[0]));
+            } catch (NumberFormatException e) {
+                other = null;
+            }
+
+            if (other == null) {
+                other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
+                if (other == null) {
+                    String s = "[accent]No player by name [white]" + args[0] + "[accent] or id [white]" + args[0] + "[accent].\n";
+                    s += "You are able to join the following players:";
+                    for (Player ply : Vars.playerGroup) {
+                        if(teams.get(ply.getTeam()) != thisTeam) {
+                            s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id + ", Team: " + teams.get(ply.getTeam()).team.name;
+                        }
+                    }
+                    player.sendMessage(s);
+                    return;
+                }
+            }
+
+            if(other.getTeam() == player.getTeam()){
+                player.sendMessage(other.name + "[accent] is on the same team as you!");
+            }
+
+            if(players.get(player.uuid).assimRank == 4){
+                assimilate(player.getTeam(), other.getTeam());
+            }else{
+                addPlayerTeam(player, teams.get(other.getTeam()));
+            }
+
+            player.sendMessage("[accent]Adding you to [white]" + other.name + "[accent]'s team...");
+
+
         });
 
         handler.<Player>register("hub", "Connect to the AA hub server", (args, player) -> {
@@ -635,6 +722,8 @@ public class Assimilation extends Plugin{
         Mechs.tau.weapon = useless;
         Mechs.trident.weapon = useless;
 
+        Mechs.alpha.health = 1;
+
         rules.canGameOver = false;
         rules.playerDamageMultiplier = 1;
         rules.playerHealthMultiplier = 1;
@@ -643,6 +732,52 @@ public class Assimilation extends Plugin{
         rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
         rules.buildSpeedMultiplier = 2;
     }
+
+    void assimilate(Team oldTeam, Team newTeam){
+        AssimilationTeam oldAssimilationTeam = teams.get(oldTeam);
+        oldAssimilationTeam.alive = false;
+        teams.remove(oldTeam);
+        if(newTeam == null || !teams.containsKey(newTeam) || teams.get(newTeam) == null){
+            Call.sendMessage(oldTeam.name + "[accent]'s team has died to mysterious means... Distributing players evenly");
+            for(Player ply : oldAssimilationTeam.players){
+                autoBalance(ply);
+            }
+            return;
+        }
+        AssimilationTeam newAssimilationTeam = teams.get(newTeam);
+
+        Call.sendMessage("[accent]" + newAssimilationTeam.name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + oldAssimilationTeam.name + "[accent]'s team!");
+        // Add XP to players in the team that did the assimilating
+        for(Player ply : newAssimilationTeam.players){
+            if(players.get(ply.uuid).connected) {
+                int addXp = 100*(players.get(ply.uuid).donateLevel+1);
+                ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for assimilating " + oldAssimilationTeam.name + "[accent]'s team!");
+                playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
+            }
+        }
+
+        for(Player ply : oldAssimilationTeam.players){
+            if(players.get(newAssimilationTeam.commander.uuid).connected){
+                int addXp = 100*(players.get(newAssimilationTeam.commander.uuid).donateLevel+1);
+                newAssimilationTeam.commander.sendMessage("[accent]+[scarlet]"+ addXp+ "xp[accent] for assimilating " + ply.name);
+                playerDataDB.entries.get(newAssimilationTeam.commander.uuid).put("xp", (int) playerDataDB.entries.get(newAssimilationTeam.commander.uuid).get("xp") + addXp);
+            }
+
+            Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
+            addPlayerTeam(ply, newAssimilationTeam);
+        }
+
+
+
+
+
+        killTiles(oldTeam);
+
+        if(teams.keySet().size() == 1 && Team.crux.cores().size == 0){
+            endgame(teams.get(teams.keySet().toArray()[0]).name);
+        }
+    }
+
 
     void autoBalance(Player player){
         // Add player to the team with least players
@@ -666,6 +801,7 @@ public class Assimilation extends Plugin{
         if(cPly.assimRank > dRank){
             cPly.assimRank = dRank;
         }
+        player.lastSpawner = null;
         player.kill();
 
     }
@@ -819,6 +955,9 @@ public class Assimilation extends Plugin{
         playerDataDB.entries.get(uuid).put("donateExpire", System.currentTimeMillis()/1000 + 2592000*period + currentPeriod);
         playerDataDB.saveRow(uuid);
         playerDataDB.loadRow(uuid);
+
+        players.get(uuid).player.name = stringHandler.determineRank((int) playerDataDB.entries.get(uuid).get("xp")) + " " + stringHandler.donatorMessagePrefix(level) + Strings.stripColors(players.get(uuid).player.name);
+        players.get(uuid).donateLevel = level;
         Log.info("Added " + period + (period > 1 ? " months" : " month") + " of donator " + level + " to uuid: " + uuid);
     }
 }
