@@ -14,6 +14,7 @@ import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
+import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import mindustry.world.Block;
 import mindustry.world.Tile;
@@ -37,6 +38,8 @@ public class Assimilation extends Plugin{
     private final Rules rules = new Rules();
     public static final int cellRadius = 37;
     public static final int cellRequirement = 1500;
+
+    public boolean zombieActive;
 
     private double counter = 0f;
 
@@ -202,6 +205,7 @@ public class Assimilation extends Plugin{
 
             if(!players.containsKey(event.player.uuid)){
                 ply = new CustomPlayer(event.player, 0, (int) playerDataDB.entries.get(event.player.uuid).get("playtime"));
+                ply.eventCalls = dLevel; // CHANGE THIS
                 players.put(event.player.uuid, ply);
             }else{
                 ply = players.get(event.player.uuid);
@@ -260,6 +264,14 @@ public class Assimilation extends Plugin{
             if(event.unit instanceof Player && players.get(((Player) event.unit).uuid).assimRank == 0){
                 ((Player) event.unit).mech = Mechs.alpha;
             }
+            if(!(event.unit instanceof Player) && zombieActive && event.unit.getTeam() != Team.crux){
+                UnitType unit = Vars.content.units().find(unitType -> unitType.name.equals(event.unit.getTypeID().name));
+                BaseUnit baseUnit = unit.create(Team.crux);
+                baseUnit.set(event.unit.x, event.unit.y);
+                baseUnit.add();
+            }
+
+
         });
 
         Events.on(EventType.PlayerSpawn.class, event ->{
@@ -397,6 +409,33 @@ public class Assimilation extends Plugin{
         handler.register("reset_wins", "Sets all monthWins to 0.", args ->{
             winsReset();
             Log.info("Monthly wins reset.");
+        });
+
+        handler.register("add_donator", "<uuid> <level> <period>", "Adds a donator", args -> {
+            int level;
+            try{
+                level = Integer.parseInt(args[1]);
+            }catch(NumberFormatException e){
+                Log.info("Invalid xp input '" + args[1] + "'");
+                return;
+            }
+
+            int period;
+            try{
+                period = Integer.parseInt(args[2]);
+            }catch(NumberFormatException e){
+                Log.info("Invalid period input '" + args[2] + "'");
+                return;
+            }
+
+            if(!playerDataDB.hasRow(args[0])){
+                Log.info("No uuid: " + args[0] + " in database");
+                return;
+            }
+
+            addDonator(args[0], level, period);
+            Log.info("Set uuid " + args[0] + " to have donator level of " + args[1] + " for " + period + " months");
+
         });
 
 
@@ -706,6 +745,49 @@ public class Assimilation extends Plugin{
 
         });
 
+        handler.<Player>register("ev", "[event]", "[sky]Start an event (donator only)", (args, player) -> {
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
+                return;
+            }
+            if(args.length == 0){
+                player.sendMessage("[accent]You can call the following events:\n\n" +
+                        "[gold]1 [accent]- Lich\n" +
+                        "[gold]2 [accent]- Instant build\n" +
+                        "[gold]3 [accent]- Zombies");
+                return;
+            }
+            if(players.get(player.uuid).eventCalls < 1){
+                player.sendMessage("[accent]You have run out of event calls!");
+                return;
+            }
+
+            switch(args[0]){
+                case "1":
+                    Call.sendMessage(player.name + "[accent] has called a [gold]Lich[accent] event! It begins in [scarlet]30 [accent]seconds!");
+                    AssimilationEvent lichEvent = new LichEvent(60f * 30f, 60f * 120f, teams);
+                    players.get(player.uuid).eventCalls -=1;
+                    lichEvent.execute();
+                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
+                    break;
+                case "2":
+                    Call.sendMessage(player.name + "[accent] has called an [gold]Instant build[accent] event! It begins in [scarlet]30 [accent]seconds!");
+                    AssimilationEvent buildEvent = new InstantBuildEvent(60f * 30f, 60f * 300f, rules);
+                    players.get(player.uuid).eventCalls -=1;
+                    buildEvent.execute();
+                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
+                    break;
+                case "3":
+                    Call.sendMessage(player.name + "[accent] has called a [gold]Zombie[accent] event! It begins in [scarlet]30 [accent]seconds!");
+                    AssimilationEvent zombieEvent = new ZombieEvent(60f * 30f, 60f * 300f, this);
+                    players.get(player.uuid).eventCalls -=1;
+                    zombieEvent.execute();
+                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
+                    break;
+
+            }
+        });
+
     }
 
     void initRules(){
@@ -962,8 +1044,12 @@ public class Assimilation extends Plugin{
         playerDataDB.saveRow(uuid);
         playerDataDB.loadRow(uuid);
 
-        players.get(uuid).player.name = stringHandler.determineRank((int) playerDataDB.entries.get(uuid).get("xp")) + " " + stringHandler.donatorMessagePrefix(level) + Strings.stripColors(players.get(uuid).player.name);
-        players.get(uuid).donateLevel = level;
+        if(players.containsKey(uuid)){
+            players.get(uuid).player.name = stringHandler.determineRank((int) playerDataDB.entries.get(uuid).get("xp")) + " " + stringHandler.donatorMessagePrefix(level) + Strings.stripColors(players.get(uuid).player.name);
+            players.get(uuid).donateLevel = level;
+            players.get(uuid).eventCalls = level;
+        }
+
         Log.info("Added " + period + (period > 1 ? " months" : " month") + " of donator " + level + " to uuid: " + uuid);
     }
 }
