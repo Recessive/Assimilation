@@ -208,7 +208,7 @@ public class Assimilation extends Plugin{
             }
             ply.donateLevel = dLevel;
             ply.connected = true;
-            ply.player = event.player;
+
             Call.setHudTextReliable(event.player.con, "[accent]Play time: [scarlet]" + players.get(event.player.uuid).playTime + "[accent] mins.");
             if(teams.containsKey(players.get(event.player.uuid).lastTeam)){
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
