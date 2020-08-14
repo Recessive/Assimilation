@@ -264,7 +264,7 @@ public class Assimilation extends Plugin{
             if(event.unit instanceof Player && players.get(((Player) event.unit).uuid).assimRank == 0){
                 ((Player) event.unit).mech = Mechs.alpha;
             }
-            if(!(event.unit instanceof Player) && zombieActive && event.unit.getTeam() != Team.crux){
+            if(!(event.unit instanceof Player) && zombieActive && event.unit.getTeam() != Team.crux && !event.unit.getTypeID().name.equals("lich") && !event.unit.getTypeID().name.equals("crawler")){
                 UnitType unit = Vars.content.units().find(unitType -> unitType.name.equals(event.unit.getTypeID().name));
                 BaseUnit baseUnit = unit.create(Team.crux);
                 baseUnit.set(event.unit.x, event.unit.y);
@@ -730,13 +730,15 @@ public class Assimilation extends Plugin{
                 }
             }
 
-            if(other.getTeam() == player.getTeam()){
+            if(other.getTeam().id == player.getTeam().id){
                 player.sendMessage(other.name + "[accent] is on the same team as you!");
+                return;
             }
 
             if(players.get(player.uuid).assimRank == 4){
                 assimilate(player.getTeam(), other.getTeam());
             }else{
+                teams.get(player.getTeam()).players.remove(player);
                 addPlayerTeam(player, teams.get(other.getTeam()));
             }
 
