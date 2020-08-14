@@ -572,8 +572,17 @@ public class Assimilation extends Plugin{
             player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/15000+1)*15000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
         });
 
+        handler.<Player>register("wins", "Show your wins", (args, player) ->{
+            int wins = (int) playerDataDB.entries.get(player.uuid).get("monthWins");
+            player.sendMessage("[scarlet]" + wins + "[accent] wins.");
+        });
+
         handler.<Player>register("leaderboard", "Displays leaderboard", (args, player) ->{
             player.sendMessage(leaderboard(5));
+        });
+
+        handler.<Player>register("hub", "Connect to the AA hub server", (args, player) -> {
+            Call.onConnect(player.con, "aamindustry.play.ai", 6567);
         });
 
 
@@ -584,6 +593,7 @@ public class Assimilation extends Plugin{
                     "[gold]Donator [scarlet]1[accent]: https://shoppy.gg/product/i4PeGjP\n" +
                     "[gold]Donator [scarlet]2[accent]: https://shoppy.gg/product/x1tMDJE\n\nThese links are also on the discord server");
         });
+
 
         handler.<Player>register("kill", "[sky]Destroy yourself (donator only)", (args, player) ->{
             if(players.get(player.uuid).donateLevel < 1){
@@ -694,10 +704,6 @@ public class Assimilation extends Plugin{
             player.sendMessage("[accent]Adding you to [white]" + other.name + "[accent]'s team...");
 
 
-        });
-
-        handler.<Player>register("hub", "Connect to the AA hub server", (args, player) -> {
-            Call.onConnect(player.con, "aamindustry.play.ai", 6567);
         });
 
     }
