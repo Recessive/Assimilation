@@ -568,8 +568,8 @@ public class Assimilation extends Plugin{
 
         handler.<Player>register("xp", "Show your xp", (args, player) ->{
             int xp = (int) playerDataDB.entries.get(player.uuid).get("xp");
-            String nextRank = stringHandler.determineRank(xp+5000);
-            player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/5000+1)*5000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
+            String nextRank = stringHandler.determineRank(xp+15000);
+            player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/15000+1)*15000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
         });
 
         handler.<Player>register("leaderboard", "Displays leaderboard", (args, player) ->{
@@ -818,7 +818,7 @@ public class Assimilation extends Plugin{
     }
 
     String leaderboard(int limit){
-        ResultSet rs = playerDataDB.customQuery("select * from player_data order by allWins desc limit " + limit);
+        ResultSet rs = playerDataDB.customQuery("select * from player_data order by monthWins desc limit " + limit);
         String s = "[accent]Leaderboard:\n";
         try{
             int i = 0;

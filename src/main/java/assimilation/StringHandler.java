@@ -7,7 +7,7 @@ public class StringHandler {
     public static final String[] badNames = {"shit", "fuck", "asshole", "cunt", "nigger", "nigga", "niga", "faggot", "dick", "bitch", "admin", "mod", "mindustry", "server", "owner", "<", ">", "recessive"};
 
     public final String determineRank(int xp){
-        switch(xp / 5000){
+        switch(xp / 15000){
             case 0: return "[accent]<[white]\uF8381[accent]>";
             case 1: return "[accent]<[white]\uF8382[accent]>";
             case 2: return "[accent]<[white]\uF8383[accent]>";
