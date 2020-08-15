@@ -17,13 +17,14 @@ public class LichEvent extends AssimilationEvent{
 
     private HashMap<Team, AssimilationTeam> teams;
 
-    public LichEvent(float delay, float timeFrame, HashMap<Team, AssimilationTeam> teams) {
-        super(delay, timeFrame);
+    public LichEvent(float delay, float timeFrame, Assimilation game, HashMap<Team, AssimilationTeam> teams) {
+        super(delay, timeFrame, game);
         this.teams = teams;
     }
 
     @Override
     public void execute() {
+        game.eventActive = true;
         Time.runTask(delay, () -> {
             Call.sendMessage("[gold]Lich [accent]event has begun! It ends in [scarlet]" + timeFrame/60 + "[accent] seconds!");
             UnitType lich = UnitTypes.lich;
@@ -37,6 +38,7 @@ public class LichEvent extends AssimilationEvent{
             }
 
             Time.runTask(timeFrame, () -> {
+                game.eventActive = false;
                 Call.sendMessage("[gold]Lich [accent]event is over!");
                 for(BaseUnit unit : units){
                     unit.kill();

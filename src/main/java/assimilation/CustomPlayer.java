@@ -12,6 +12,7 @@ public class CustomPlayer{
     public boolean connected;
     public int donateLevel = 0;
     public int eventCalls = 0;
+    public int joinsLeft = 1;
 
 
     public CustomPlayer(Player player, int assimRank, int playTime){

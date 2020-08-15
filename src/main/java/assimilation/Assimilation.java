@@ -42,7 +42,9 @@ public class Assimilation extends Plugin{
     public static final int cellRadius = 37;
     public static final int cellRequirement = 1500;
 
+    public boolean eventActive;
     public boolean zombieActive;
+
 
     private double counter = 0f;
 
@@ -288,7 +290,6 @@ public class Assimilation extends Plugin{
         });
 
         Events.on(EventType.PlayerLeave.class, event ->{
-            Log.info("Saving " + event.player.uuid + " data...");
             savePlayerData(event.player.uuid);
             players.get(event.player.uuid).connected = false;
         });
@@ -625,6 +626,14 @@ public class Assimilation extends Plugin{
             player.sendMessage(leaderboard(5));
         });
 
+        handler.<Player>register("discord", "Prints the discord link", (args, player) -> {
+            player.sendMessage("[purple]https://discord.gg/GEnYcSv");
+        });
+
+        handler.<Player>register("uuid", "Prints the your uuid", (args, player) -> {
+            player.sendMessage("[scarlet]" + player.uuid);
+        });
+
         handler.<Player>register("hub", "Connect to the AA hub server", (args, player) -> {
             Call.onConnect(player.con, "aamindustry.play.ai", 6567);
         });
@@ -751,12 +760,19 @@ public class Assimilation extends Plugin{
                 return;
             }
 
+            if(players.get(player.uuid).joinsLeft < 1){
+                player.sendMessage("You have joined the maximum number of teams this round!");
+                return;
+            }
+
             if(players.get(player.uuid).assimRank == 4){
                 assimilate(player.getTeam(), other.getTeam());
             }else{
                 teams.get(player.getTeam()).players.remove(player);
                 addPlayerTeam(player, teams.get(other.getTeam()));
             }
+
+            players.get(player.uuid).joinsLeft -= 1;
 
             player.sendMessage("[accent]Adding you to [white]" + other.name + "[accent]'s team...");
 
@@ -780,17 +796,22 @@ public class Assimilation extends Plugin{
                 return;
             }
 
+            if(eventActive){
+                player.sendMessage("[accent]There is currently an event active!");
+                return;
+            }
+
             switch(args[0]){
                 case "1":
                     Call.sendMessage(player.name + "[accent] has called a [gold]Lich[accent] event! It begins in [scarlet]30 [accent]seconds!");
-                    AssimilationEvent lichEvent = new LichEvent(60f * 30f, 60f * 120f, teams);
+                    AssimilationEvent lichEvent = new LichEvent(60f * 30f, 60f * 45f, this, teams);
                     players.get(player.uuid).eventCalls -=1;
                     lichEvent.execute();
                     player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
                     break;
                 case "2":
                     Call.sendMessage(player.name + "[accent] has called an [gold]Instant build[accent] event! It begins in [scarlet]30 [accent]seconds!");
-                    AssimilationEvent buildEvent = new InstantBuildEvent(60f * 30f, 60f * 300f, rules);
+                    AssimilationEvent buildEvent = new InstantBuildEvent(60f * 30f, 60f * 300f, this, rules);
                     players.get(player.uuid).eventCalls -=1;
                     buildEvent.execute();
                     player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
@@ -992,13 +1013,14 @@ public class Assimilation extends Plugin{
             // I shouldn't need this, all players should be gone since I connected them to hub
             // netServer.kickAll(KickReason.serverRestarting);
             Log.info("Game ended successfully.");
-            Time.runTask(5f, () -> System.exit(2));
+            Time.runTask(60f*2, () -> System.exit(2));
         });
 
 
     }
 
     void savePlayerData(String uuid){
+        Log.info("Saving " + uuid + " data...");
         CustomPlayer ply = players.get(uuid);
         playerDataDB.entries.get(uuid).put("playtime", ply.playTime);
         playerDataDB.saveRow(uuid);

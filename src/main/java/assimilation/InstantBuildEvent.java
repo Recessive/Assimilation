@@ -16,14 +16,15 @@ public class InstantBuildEvent extends AssimilationEvent{
 
     private Rules rules;
 
-    public InstantBuildEvent(float delay, float timeFrame, Rules rules){
-        super(delay, timeFrame);
+    public InstantBuildEvent(float delay, float timeFrame, Assimilation game, Rules rules){
+        super(delay, timeFrame, game);
         this.rules = rules;
     }
 
     @Override
     public void execute() {
         Time.runTask(delay, () -> {
+            game.eventActive = true;
             Call.sendMessage("[gold]Instant build [accent]event has begun! It ends in [scarlet]" + timeFrame / 60 + "[accent] seconds!");
 
             rules.buildSpeedMultiplier = 100;
@@ -31,6 +32,7 @@ public class InstantBuildEvent extends AssimilationEvent{
             Call.onSetRules(rules);
 
             Time.runTask(timeFrame, () -> {
+                game.eventActive = false;
                 Call.sendMessage("[gold]Instant build [accent]event is over!");
                 rules.buildSpeedMultiplier = 2;
                 Vars.state.rules = rules.copy();
