@@ -40,7 +40,6 @@ public class LichEvent extends AssimilationEvent{
                 Call.sendMessage("[gold]Lich [accent]event is over!");
                 for(BaseUnit unit : units){
                     unit.kill();
-                    unit.kill();
                 }
             });
         });

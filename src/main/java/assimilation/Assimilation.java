@@ -144,13 +144,14 @@ public class Assimilation extends Plugin{
 
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
 
-                for(Player ply : teams.get(event.tile.entity.lastHit).players){
-                    if(players.get(ply.uuid).connected){
-                        int addXp = 10*(players.get(ply.uuid).donateLevel+1);
-                        ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
-                        playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
+                if(event.tile.entity.lastHit != null && teams.containsKey(event.tile.entity.lastHit));
+                    for(Player ply : teams.get(event.tile.entity.lastHit).players){
+                        if(players.get(ply.uuid).connected){
+                            int addXp = 10*(players.get(ply.uuid).donateLevel+1);
+                            ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
+                            playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
+                        }
                     }
-                }
                 eventCell.clearCell();
                 freeCells.remove(eventCell);
                 if(teams.keySet().size() == 1 && Team.crux.cores().size == 1){
@@ -284,6 +285,7 @@ public class Assimilation extends Plugin{
         });
 
         Events.on(EventType.PlayerLeave.class, event ->{
+            Log.info("Saving " + event.player.uuid + " data...");
             savePlayerData(event.player.uuid);
             players.get(event.player.uuid).connected = false;
         });
@@ -819,7 +821,7 @@ public class Assimilation extends Plugin{
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad);
         rules.buildSpeedMultiplier = 2;
     }
 
