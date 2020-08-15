@@ -803,12 +803,14 @@ public class Assimilation extends Plugin{
 
             switch(args[0]){
                 case "1":
-                    Call.sendMessage(player.name + "[accent] has called a [gold]Lich[accent] event! It begins in [scarlet]30 [accent]seconds!");
+                    player.sendMessage("[accent]Temporarily disabled...");
+                    return;
+                    /*Call.sendMessage(player.name + "[accent] has called a [gold]Lich[accent] event! It begins in [scarlet]30 [accent]seconds!");
                     AssimilationEvent lichEvent = new LichEvent(60f * 30f, 60f * 45f, this, teams);
                     players.get(player.uuid).eventCalls -=1;
                     lichEvent.execute();
                     player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
-                    break;
+                    break;*/
                 case "2":
                     Call.sendMessage(player.name + "[accent] has called an [gold]Instant build[accent] event! It begins in [scarlet]30 [accent]seconds!");
                     AssimilationEvent buildEvent = new InstantBuildEvent(60f * 30f, 60f * 300f, this, rules);

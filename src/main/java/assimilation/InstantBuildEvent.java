@@ -23,8 +23,8 @@ public class InstantBuildEvent extends AssimilationEvent{
 
     @Override
     public void execute() {
+        game.eventActive = true;
         Time.runTask(delay, () -> {
-            game.eventActive = true;
             Call.sendMessage("[gold]Instant build [accent]event has begun! It ends in [scarlet]" + timeFrame / 60 + "[accent] seconds!");
 
             rules.buildSpeedMultiplier = 100;
