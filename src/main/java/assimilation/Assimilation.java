@@ -853,7 +853,7 @@ public class Assimilation extends Plugin{
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad, Blocks.arc);
         rules.buildSpeedMultiplier = 2;
     }
 
