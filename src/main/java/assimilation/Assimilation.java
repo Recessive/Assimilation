@@ -1022,6 +1022,15 @@ public class Assimilation extends Plugin{
     }
 
     void savePlayerData(String uuid){
+        if(!playerDataDB.entries.containsKey(uuid)){
+            if(players.containsKey(uuid)){
+                Log.info(uuid + " data already saved!");
+            }else{
+                Log.info(uuid + " does not exist in player object or data!");
+            }
+
+            return;
+        }
         Log.info("Saving " + uuid + " data...");
         CustomPlayer ply = players.get(uuid);
         playerDataDB.entries.get(uuid).put("playtime", ply.playTime);
