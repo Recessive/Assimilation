@@ -797,7 +797,7 @@ public class Assimilation extends Plugin{
                     break;
                 case "3":
                     Call.sendMessage(player.name + "[accent] has called a [gold]Zombie[accent] event! It begins in [scarlet]30 [accent]seconds!");
-                    AssimilationEvent zombieEvent = new ZombieEvent(60f * 30f, 60f * 300f, this);
+                    AssimilationEvent zombieEvent = new ZombieEvent(60f * 30f, 60f * 120f, this);
                     players.get(player.uuid).eventCalls -=1;
                     zombieEvent.execute();
                     player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
@@ -853,7 +853,7 @@ public class Assimilation extends Plugin{
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad, Blocks.arc);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad);
         rules.buildSpeedMultiplier = 2;
     }
 
