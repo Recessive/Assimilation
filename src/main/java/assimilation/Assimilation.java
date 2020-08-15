@@ -1,12 +1,14 @@
 package assimilation;
 
 import arc.*;
+import arc.func.Boolf;
 import arc.math.Mathf;
 import arc.struct.Array;
 import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.core.GameState;
+import mindustry.entities.bullet.BulletType;
 import mindustry.entities.type.*;
 import mindustry.game.EventType;
 import mindustry.game.Rules;
@@ -18,6 +20,7 @@ import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import mindustry.world.Block;
 import mindustry.world.Tile;
+import mindustry.world.blocks.defense.turrets.ChargeTurret;
 import mindustry.world.blocks.storage.CoreBlock;
 
 import java.math.BigInteger;
@@ -626,6 +629,17 @@ public class Assimilation extends Plugin{
             Call.onConnect(player.con, "aamindustry.play.ai", 6567);
         });
 
+        handler.<Player>register("info", "Display info about the gamemode", (args, player) -> {
+            player.sendMessage("[#4d004d]{[purple]AA[#4d004d]}[red]A S S I M I L A T I O N[accent] is essentially FFA (hex pvp) but" +
+                    " when you kill someone, they join your team.\n\n" +
+                    "Use the [scarlet]/rerank [accent]command to rerank players on your team to:\n" +
+                    "[gold]0[accent]: Bot (spawns as an alpha mech, cant build or break, only shoot)\n" +
+                    "[gold]1[accent]: Drone (can only break things placed by drones)\n" +
+                    "[gold]2[accent]: Private (can only break things placed by drones or privates)\n" +
+                    "[gold]3[accent]: Captain (can break everything)\n\n" +
+                    "You can use [scarlet]/drank [accent] to set the default rank when someone joins your team.");
+        });
+
 
 
         handler.<Player>register("donate", "Donate to the server", (args, player) -> {
@@ -816,7 +830,25 @@ public class Assimilation extends Plugin{
 
         Mechs.alpha.health = 1;
 
+        // Modify lancer laser
+
+        Block lancer = Vars.content.blocks().find(new Boolf<Block>() {
+            @Override
+            public boolean get(Block block) {
+                return block.name.equals("lancer");
+            }
+        });
+
+        BulletType newLancerLaser = AssimilationData.getLLaser();
+
+        ((ChargeTurret)(lancer)).shootType = newLancerLaser;
+
+        for(Block b : content.blocks()){
+            b.health *= 10;
+        }
+
         rules.canGameOver = false;
+        rules.unitDamageMultiplier = 10;
         rules.playerDamageMultiplier = 1;
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
