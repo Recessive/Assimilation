@@ -267,7 +267,6 @@ public class Assimilation extends Plugin{
                 cell = freeCells.remove(0);
             }
 
-            Log.info(cell.x + "," + cell.y);
             cTeam.capturedCells.add(cell);
             cTeam.homeCell = cell;
             cell.owner = event.player.getTeam();
@@ -321,7 +320,7 @@ public class Assimilation extends Plugin{
             }
 
             Log.info("Generating map...");
-            ArenaGenerator generator = new ArenaGenerator(cellRadius);
+            ArenaGenerator generator = new ArenaGenerator(cellRadius, rand.nextFloat());
             world.loadGenerator(generator);
             Log.info("Map generated.");
 
@@ -886,6 +885,8 @@ public class Assimilation extends Plugin{
         BulletType newLancerLaser = AssimilationData.getLLaser();
 
         ((ChargeTurret)(lancer)).shootType = newLancerLaser;
+
+        UnitTypes.draug.health *= 100;
 
         for(Block b : content.blocks()){
             b.health *= 10;

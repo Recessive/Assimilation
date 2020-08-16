@@ -24,12 +24,14 @@ import static mindustry.Vars.world;
 public class ArenaGenerator extends Generator {
 
     public static final int size = 516;
+    private float genNumber;
     private int cellRadius;
     private int spacing;
 
-    public ArenaGenerator(int cellRadius) {
+    public ArenaGenerator(int cellRadius, float genNumber) {
         super(size, size);
         this.cellRadius = cellRadius;
+        this.genNumber = genNumber;
         spacing = 78;
     }
 
@@ -40,13 +42,20 @@ public class ArenaGenerator extends Generator {
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                tiles[x][y] = new Tile(x, y, Blocks.darksand.id, Blocks.air.id, Blocks.duneRocks.id);
+                if(genNumber < 0.5 && genNumber >= 0.25){
+                    tiles[x][y] = new Tile(x, y, Blocks.darksand.id, Blocks.air.id, Blocks.air.id);
+                }else{
+                    tiles[x][y] = new Tile(x, y, Blocks.darksand.id, Blocks.air.id, Blocks.duneRocks.id);
+                }
             }
         }
 
         defaultOres(tiles);
 
         List<Tuple<Integer, Integer>> cells = getCells();
+
+
+
 
         for(Tuple<Integer, Integer> cell : cells){
             int x = (int) cell.get(0);
@@ -62,6 +71,9 @@ public class ArenaGenerator extends Generator {
 
 
             });
+            if(genNumber < 0.25){
+                continue;
+            }
             Angles.circle(3, 360f / 3 / 2f - 90, f -> {
                 Tmp.v1.trnsExact(f, spacing + 12);
                 if(Structs.inBounds(x + (int)Tmp.v1.x, y + (int)Tmp.v1.y, width, height)){
