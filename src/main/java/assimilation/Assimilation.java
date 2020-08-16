@@ -16,6 +16,7 @@ import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
+import mindustry.type.Mech;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import mindustry.world.Block;
@@ -50,6 +51,7 @@ public class Assimilation extends Plugin{
 
     private List<Cell> cells = new ArrayList<>();
     private List<Cell> freeCells = new ArrayList<>();
+    private List<Cell> priorityCells = new ArrayList<>();
 
     private Array<Array<ItemStack>> loadouts = new Array<>(4);
 
@@ -123,7 +125,6 @@ public class Assimilation extends Plugin{
 
         Events.on(Cell.CellCaptureEvent.class, event ->{
             event.cell.makeShard();
-            freeCells.remove(event.cell);
         });
 
         Events.on(EventType.BlockDestroyEvent.class, event ->{
@@ -159,6 +160,7 @@ public class Assimilation extends Plugin{
                     }
                 eventCell.clearCell();
                 freeCells.remove(eventCell);
+                priorityCells.remove(eventCell);
                 if(teams.keySet().size() == 1 && Team.crux.cores().size == 1){
                     endgame(teams.get(teams.keySet().toArray()[0]).name);
                 }
@@ -235,7 +237,7 @@ public class Assimilation extends Plugin{
                 return;
             }
             // In the event there are no free cells
-            if(freeCells.size() == 0){
+            if(priorityCells.size() == 0 && freeCells.size() == 0){
                 autoBalance(event.player);
 
                 return;
@@ -256,8 +258,16 @@ public class Assimilation extends Plugin{
 
 
             // Determine next free cell randomly
-            Collections.shuffle(freeCells);
-            Cell cell = freeCells.remove(0);
+            Cell cell;
+            if(priorityCells.size() != 0){
+                Collections.shuffle(priorityCells);
+                cell = priorityCells.remove(0);
+            }else{
+                Collections.shuffle(freeCells);
+                cell = freeCells.remove(0);
+            }
+
+            Log.info(cell.x + "," + cell.y);
             cTeam.capturedCells.add(cell);
             cTeam.homeCell = cell;
             cell.owner = event.player.getTeam();
@@ -328,7 +338,11 @@ public class Assimilation extends Plugin{
                 c.owner = Team.crux;
                 c.makeNexus(null, true);
                 cells.add(c);
-                freeCells.add(c);
+                if(c.x == 39 || c.x == 448 || c.y == 39 || c.y == 478){
+                    priorityCells.add(c);
+                }else{
+                    freeCells.add(c);
+                }
                 cellLimit -= 1;
                 if(cellLimit <= 0){
                     break;
@@ -844,14 +858,21 @@ public class Assimilation extends Plugin{
         }};
 
         Mechs.dart.weapon = useless;
+        Mechs.dart.health *= 10;
         Mechs.delta.weapon = useless;
+        Mechs.delta.health *= 10;
         Mechs.glaive.weapon = useless;
+        Mechs.glaive.health *= 10;
         Mechs.javelin.weapon = useless;
+        Mechs.javelin.health *= 10;
         Mechs.omega.weapon = useless;
+        Mechs.omega.health *= 10;
         Mechs.tau.weapon = useless;
+        Mechs.tau.health *= 10;
         Mechs.trident.weapon = useless;
+        Mechs.trident.health *= 10;
 
-        Mechs.alpha.health = 1;
+        Mechs.alpha.health  *= 5;
 
         // Modify lancer laser
 
