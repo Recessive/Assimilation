@@ -150,14 +150,15 @@ public class Assimilation extends Plugin{
 
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
 
-                if(event.tile.entity.lastHit != null && teams.containsKey(event.tile.entity.lastHit));
-                    for(Player ply : teams.get(event.tile.entity.lastHit).players){
-                        if(players.get(ply.uuid).connected){
-                            int addXp = 10*(players.get(ply.uuid).donateLevel+1);
+                if(event.tile.entity.lastHit != null && teams.containsKey(event.tile.entity.lastHit)) {
+                    for (Player ply : teams.get(event.tile.entity.lastHit).players) {
+                        if (players.get(ply.uuid).connected) {
+                            int addXp = 10 * (players.get(ply.uuid).donateLevel + 1);
                             ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
                             playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
                         }
                     }
+                }
                 eventCell.clearCell();
                 freeCells.remove(eventCell);
                 priorityCells.remove(eventCell);
@@ -320,7 +321,7 @@ public class Assimilation extends Plugin{
             }
 
             Log.info("Generating map...");
-            ArenaGenerator generator = new ArenaGenerator(cellRadius, rand.nextFloat());
+            ArenaGenerator generator = new ArenaGenerator(cellRadius, 0.6f);//rand.nextFloat());
             world.loadGenerator(generator);
             Log.info("Map generated.");
 
@@ -972,6 +973,7 @@ public class Assimilation extends Plugin{
         }
         player.lastSpawner = null;
         player.kill();
+        player.lastSpawner = newTeam.team.core();
 
     }
 
