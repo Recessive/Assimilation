@@ -42,11 +42,7 @@ public class ArenaGenerator extends Generator {
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                if(genNumber < 0.5 && genNumber >= 0.25){
-                    tiles[x][y] = new Tile(x, y, Blocks.darksand.id, Blocks.air.id, Blocks.air.id);
-                }else{
-                    tiles[x][y] = new Tile(x, y, Blocks.darksand.id, Blocks.air.id, Blocks.duneRocks.id);
-                }
+                tiles[x][y] = new Tile(x, y, Blocks.darksand.id, Blocks.air.id, Blocks.duneRocks.id);
             }
         }
 
@@ -71,15 +67,22 @@ public class ArenaGenerator extends Generator {
 
 
             });
+
             if(genNumber < 0.25){
                 continue;
             }
+
+            int gapWidth = 3;
+            if(genNumber < 0.5 && genNumber >= 0.25){
+                gapWidth = 12;
+            }
+            int finalGapWidth = gapWidth;
             Angles.circle(3, 360f / 3 / 2f - 90, f -> {
                 Tmp.v1.trnsExact(f, spacing + 12);
                 if(Structs.inBounds(x + (int)Tmp.v1.x, y + (int)Tmp.v1.y, width, height)){
                     Tmp.v1.trnsExact(f, spacing / 2 + 7);
                     Bresenham2.line(x, y, x + (int)Tmp.v1.x, y + (int)Tmp.v1.y, (cx, cy) -> {
-                        Geometry.circle(cx, cy, width, height, 3, (c2x, c2y) -> {
+                        Geometry.circle(cx, cy, width, height, finalGapWidth, (c2x, c2y) -> {
                             if(!(Math.abs(c2x - x) < (3) && Math.abs(c2y - y) < (3))){
                                 tiles[c2x][c2y].setBlock(Blocks.air);
                             }

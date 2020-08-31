@@ -5,14 +5,13 @@ import arc.func.Boolf;
 import arc.math.Mathf;
 import arc.struct.Array;
 import arc.util.*;
+import arc.util.serialization.Base64Coder;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.core.GameState;
 import mindustry.entities.bullet.BulletType;
 import mindustry.entities.type.*;
-import mindustry.game.EventType;
-import mindustry.game.Rules;
-import mindustry.game.Team;
+import mindustry.game.*;
 import mindustry.gen.*;
 import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
@@ -42,6 +41,8 @@ public class Assimilation extends Plugin{
     private final Rules rules = new Rules();
     public static final int cellRadius = 37;
     public static final int cellRequirement = 1500;
+    private Schematic cellSpawn;
+
 
     public boolean eventActive;
     public boolean zombieActive;
@@ -68,11 +69,17 @@ public class Assimilation extends Plugin{
 
     //register event handlers and create variables in the constructor
     public void init(){
+
         playerDataDB.connect("data/server_data.db");
         playerConfigDB.connect(playerDataDB.conn);
         donationDB.connect(playerDataDB.conn);
 
         initRules();
+
+        Rank defaultRank = new Rank("", 0);
+        Rank donatorOne = new Rank("[#4d004d]{[sky]Donator[#4d004d]} [white]", 1);
+        Rank donatorTwo = new Rank("[#4d004d]{[sky]Donator[gold]+[#4d004d]} [sky] ", 2);
+        Rank youtuber = new Rank("[#4d004d]{[scarlet]You[gray]tuber} [sky]", 0);
 
         netServer.admins.addActionFilter((action) -> {
             Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
@@ -321,7 +328,13 @@ public class Assimilation extends Plugin{
             }
 
             Log.info("Generating map...");
-            ArenaGenerator generator = new ArenaGenerator(cellRadius, 0.6f);//rand.nextFloat());
+            float generation = rand.nextFloat();
+            generation = 0.6f;
+            ArenaGenerator generator = new ArenaGenerator(cellRadius, generation);
+            if(generation < 0.25f){
+                cellSpawn = Schematics.readBase64("bXNjaAB4nEWOywrCQAwAk82j9eSXePCLpNQKKm5BFH9f1rbjHpYhTIZIL72K1+Exye4zDffTOD+nIv3tXcfXda6yb4PDZX7X8/AbiBxle9Y+hQr0/xwKKKFuXVOSSk/pKT2lp/SUntIr9Mrabg1jlnjbhrFhXGN4hud4jud4jhd4gRd4gZd4iZfL/drIIIcCSmjrdfS6paeNCmSQQwEltPS+5DQQ0g==");
+                rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 1000, Items.metaglass, 200, Items.silicon, 1500, Items.titanium, 500);
+            }
             world.loadGenerator(generator);
             Log.info("Map generated.");
 
@@ -334,7 +347,7 @@ public class Assimilation extends Plugin{
 
 
             for(Tuple<Integer, Integer> cell : generator.getCells()){
-                Cell c = new Cell((int) cell.get(0), (int) cell.get(1), recorder, players);
+                Cell c = new Cell((int) cell.get(0), (int) cell.get(1), recorder, players, cellSpawn);
                 c.owner = Team.crux;
                 c.makeNexus(null, true);
                 cells.add(c);
@@ -857,6 +870,8 @@ public class Assimilation extends Plugin{
             bullet = Bullets.standardMechSmall;
         }};
 
+        cellSpawn = Schematics.readBase64("bXNjaAB4nE2QywqDMBAAd5NNomA/xUtv/ZoiVqjgA7TS3299TeshTnQcNkouuYoNVd/IpZrntr+/q65rHlcnxes5Tu3Sl+sTKepxasphqbtmmUXkJufl1kVZflsPGRSgCCUoO0gpK1GlrJSVslJWyrqXt032P+x2c0d5bRhvz1kcs3i+8MziKXvKhmd4hmd4AS/gBbyAF/EiXsSLeAkv8dvTfs6NPGRQgCKU6J3l7DzilxRykIcMClCEErQXP30oExg=");
+
         Mechs.dart.weapon = useless;
         Mechs.dart.health *= 10;
         Mechs.delta.weapon = useless;
@@ -899,7 +914,7 @@ public class Assimilation extends Plugin{
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad, Blocks.phaseWall, Blocks.phaseWallLarge);
         rules.buildSpeedMultiplier = 2;
     }
 
