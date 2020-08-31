@@ -156,7 +156,6 @@ public class Assimilation extends Plugin{
             }
 
             if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
-
                 if(event.tile.entity.lastHit != null && teams.containsKey(event.tile.entity.lastHit)) {
                     for (Player ply : teams.get(event.tile.entity.lastHit).players) {
                         if (players.get(ply.uuid).connected) {
@@ -329,10 +328,9 @@ public class Assimilation extends Plugin{
 
             Log.info("Generating map...");
             float generation = rand.nextFloat();
-            generation = 0.6f;
             ArenaGenerator generator = new ArenaGenerator(cellRadius, generation);
             if(generation < 0.25f){
-                cellSpawn = Schematics.readBase64("bXNjaAB4nEWOywrCQAwAk82j9eSXePCLpNQKKm5BFH9f1rbjHpYhTIZIL72K1+Exye4zDffTOD+nIv3tXcfXda6yb4PDZX7X8/AbiBxle9Y+hQr0/xwKKKFuXVOSSk/pKT2lp/SUntIr9Mrabg1jlnjbhrFhXGN4hud4jud4jhd4gRd4gZd4iZfL/drIIIcCSmjrdfS6paeNCmSQQwEltPS+5DQQ0g==");
+                cellSpawn = Schematics.readBase64("bXNjaAB4nE2RWw6CMBBFp3TaGRK34gJcjSGkH75KohK3ryA9ykc5tKe3DVd66YNoHW5F+lcZLsdxupdO/DzX8XmaquyWiX2dx2uZHyJykPZ0yxAYfp8RUihBGTLINwokB6LCN3mlCCmUoAwZ5P+XXV/ddsqSoawaq21HZEds9/qQMdc8xVM8xVO8hJfwEl7Cy3gZL+NlPMMzPKMFowWjBaMFowWjBSPZ+QFOC04LTgtOC04LTgtOC74lvgFcRBAe");
                 rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 1000, Items.metaglass, 200, Items.silicon, 1500, Items.titanium, 500);
             }
             world.loadGenerator(generator);
