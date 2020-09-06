@@ -197,6 +197,10 @@ public class Assimilation extends Plugin{
             playerDataDB.loadRow(event.player.uuid);
             playerConfigDB.loadRow(event.player.uuid);
 
+            if((int) playerConfigDB.entries.get(event.player.uuid).get("defaultRank") == 0){
+                playerDataDB.entries.get(event.player.uuid).put("defaultRank", 1);
+            }
+
             // Check for donation expiration
             int dLevel = (int) playerDataDB.entries.get(event.player.uuid).get("donatorLevel");
             if(dLevel != 0 && donationExpired(event.player.uuid)){
@@ -614,19 +618,19 @@ public class Assimilation extends Plugin{
 
         handler.<Player>register("drank", "[rank]", "Set the default rank players have when assimilated into your team", (args, player) ->{
             if (args.length == 0) {
-                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]0 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]0[accent]: Bot\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
+                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]1 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
                 return;
             }
             int dRank;
             try {
                 dRank = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
-                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]0 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]0[accent]: Bot\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
+                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]1 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
                 return;
             }
 
-            if(dRank < 0 || dRank > 3){
-                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]0 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]0[accent]: Bot\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
+            if(dRank < 1 || dRank > 3){
+                player.sendMessage("[accent]This command expects [scarlet]1[accent] argument of a number from [scarlet]1 [accent]to [scarlet]3[accent]:\n [gold]- [scarlet]1[accent]: Drone\n [gold]- [scarlet]2[accent]: Private\n [gold]- [scarlet]3[accent]: Captain");
                 return;
             }
 
