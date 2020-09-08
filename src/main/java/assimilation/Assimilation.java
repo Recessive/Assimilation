@@ -198,7 +198,7 @@ public class Assimilation extends Plugin{
             playerConfigDB.loadRow(event.player.uuid);
 
             if((int) playerConfigDB.entries.get(event.player.uuid).get("defaultRank") == 0){
-                playerDataDB.entries.get(event.player.uuid).put("defaultRank", 1);
+                playerConfigDB.entries.get(event.player.uuid).put("defaultRank", 1);
             }
 
             // Check for donation expiration
