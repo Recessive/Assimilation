@@ -64,7 +64,11 @@ public class Assimilation extends Plugin{
 
     private DBInterface playerDataDB = new DBInterface("player_data");
     private DBInterface playerConfigDB = new DBInterface("player_config");
+
+    private DBInterface networkDB = new DBInterface("player_data");
     private DBInterface donationDB = new DBInterface("donation_data");
+
+
 
     private StringHandler stringHandler = new StringHandler();
     private PipeHandler hubPipe = new PipeHandler("/tmp/hubPIPEassim");
@@ -74,13 +78,16 @@ public class Assimilation extends Plugin{
 
         playerDataDB.connect("data/server_data.db");
         playerConfigDB.connect(playerDataDB.conn);
-        donationDB.connect(playerDataDB.conn);
+
+        networkDB.connect("../hub-server/data/server_data.db");
+        donationDB.connect(networkDB.conn);
+
         hubPipe.on("test", (e) ->{
             Log.info("Recieved test from hub with argument: " + e);
-            for(Player ply : playerGroup.all()){
-                ply.sendMessage("Pipe test");
-            }
+            Call.sendMessage("Pipe test");
         });
+
+        hubPipe.on("say", Call::sendMessage);
 
         hubPipe.beginRead();
 
@@ -239,7 +246,7 @@ public class Assimilation extends Plugin{
 
             if(!players.containsKey(event.player.uuid)){
                 ply = new CustomPlayer(event.player, 0, (int) playerDataDB.entries.get(event.player.uuid).get("playtime"));
-                ply.eventCalls = dLevel; // CHANGE THIS
+                ply.eventCalls = dLevel; // CHANGE THIS | why tho?
                 players.put(event.player.uuid, ply);
             }else{
                 ply = players.get(event.player.uuid);
@@ -382,28 +389,6 @@ public class Assimilation extends Plugin{
             checkExpiration();
 
             netServer.openServer();
-
-        });
-
-        handler.register("setplaytime", "<uuid> <playtime>", "Set the play time of a player", args -> {
-            int newTime;
-            try{
-                newTime = Integer.parseInt(args[1]);
-            }catch(NumberFormatException e){
-                Log.info("Invalid playtime input '" + args[1] + "'");
-                return;
-            }
-
-            if(!playerDataDB.entries.containsKey(args[0])){
-                playerDataDB.loadRow(args[0]);
-                playerDataDB.entries.get(args[0]).put("playtime", newTime);
-                playerDataDB.saveRow(args[0]);
-            }else{
-                Player player = players.get(args[0]).player;
-                players.get(args[0]).playTime = newTime;
-                Call.setHudTextReliable(player.con, "[accent]Play time: [scarlet]" + players.get(player.uuid).playTime + "[accent] mins.");
-            }
-            Log.info("Set uuid " + args[0] + " to have play time of " + args[1] + " minutes");
 
         });
 

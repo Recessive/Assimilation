@@ -49,7 +49,7 @@ public class PipeHandler {
     }
 
     private void fire(String message){
-        String[] splt = message.split(":");
+        String[] splt = message.split(";");
         String key = splt[0];
         String value = splt[1];
         actions.get(key).each((r) -> {r.accept(value);});
@@ -60,7 +60,7 @@ public class PipeHandler {
         try {
             String line;
             while (null != (line = pipe.readLine())) {
-                if(actions.containsKey(line.split(":")[0])){
+                if(actions.containsKey(line.split(";")[0])){
                     fire(line);
                 }else{
                     Log.info("Unknown message \"" + line + "\"");
