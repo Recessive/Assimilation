@@ -15,6 +15,8 @@ public class AssimilationTeam{
     protected List<Player> players = new ArrayList<>();
     public List<Cell> capturedCells = new ArrayList<>();
     public Cell homeCell;
+    public boolean codered = false;
+    public boolean coderedAllowed = true;
 
     public AssimilationTeam(Player player, int defaultRank) {
         this.team = player.getTeam();

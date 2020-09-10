@@ -39,6 +39,7 @@ public class DBInterface {
             Statement stmt  = conn.createStatement();
             ResultSet rs    = stmt.executeQuery(sql);
             key = rs.getString(2);
+            rs.close();
         } catch (SQLException ignored) {
         }
     }
@@ -51,7 +52,9 @@ public class DBInterface {
             ResultSet rs    = stmt.executeQuery(sql);
 
             // loop through the result set
-            return rs.getString(this.key).length() != 0;
+            boolean isThere = rs.getString(this.key).length() != 0;
+            rs.close();
+            return isThere;
         } catch (SQLException ignored) {
         }
         return false;
@@ -63,6 +66,7 @@ public class DBInterface {
         try {
             Statement stmt = conn.createStatement();
             stmt.executeUpdate(sql);
+            stmt.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }

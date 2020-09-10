@@ -90,6 +90,11 @@ public class Assimilation extends Plugin{
                     && players.get(action.player.uuid).assimRank < 3) {
                 return false;
             }
+            if (action.player != null
+            && players.get(action.player.uuid).assimRank != 4 && teams.get(action.player.getTeam()).codered){
+                return false;
+            }
+
             return true;
         });
 
@@ -509,7 +514,7 @@ public class Assimilation extends Plugin{
             }
 
             if (players.get(player.uuid).assimRank != 4) {
-                player.sendMessage("You can only re-rank players if you are a Commander!\n");
+                player.sendMessage("[accent]You can only re-rank players if you are a Commander!\n");
                 return;
             }
             boolean wasID = true;
@@ -589,7 +594,6 @@ public class Assimilation extends Plugin{
                 addDonator(player.uuid, level, period);
 
                 player.sendMessage("[gold]Key verified! Enjoy your [scarlet]" + period + (period > 1 ? " months" : " month") + "[gold] of donator [scarlet]" + level + "[gold]!");
-
                 donationDB.customUpdate("DELETE FROM donation_data WHERE donateKey=\"" + args[0] + "\";");
                 Log.info("Removed key " + args[0] + " from database");
                 return;
@@ -637,6 +641,44 @@ public class Assimilation extends Plugin{
             playerConfigDB.entries.get(player.uuid).put("defaultRank", dRank);
             if(players.get(player.uuid).assimRank == 4) teams.get(player.getTeam()).defaultRank = dRank;
             player.sendMessage("[accent]Successfully updated default rank to [scarlet]" + dRank);
+
+        });
+
+        handler.<Player>register("c", "Lock building for all except commander", (args, player) ->{
+            AssimilationTeam team = teams.get(player.getTeam());
+            if (players.get(player.uuid).assimRank != 4) {
+                player.sendMessage("[accent]You can only call a code red if you are a Commander!");
+                return;
+            }
+            if (team.codered){
+                player.sendMessage("[accent]Team is already in code red!");
+                return;
+            }
+            if (!team.coderedAllowed){
+                player.sendMessage("[accent]You can only call a code red once every 2 minutes!");
+                return;
+            }
+
+            team.codered = true;
+            team.coderedAllowed = false;
+
+            Time.runTask(60 * 60, () -> {
+                team.codered = false;
+                player.sendMessage("[accent]Code red over.");
+            });
+
+            Time.runTask(60 * 60 * 2, () -> {
+                team.coderedAllowed = true;
+            });
+
+            player.sendMessage("[accent]Code red called. Everyone but you on your team is build locked for the next minute.");
+
+            for(Player ply : team.players){
+                if(players.get(ply.uuid).connected && ply != player){
+                    ply.sendMessage(player.name + "[accent] called a code red. You cannot build for the next minute.");
+                }
+            }
+
 
         });
 
@@ -874,7 +916,7 @@ public class Assimilation extends Plugin{
 
         cellSpawn = Schematics.readBase64("bXNjaAB4nE2QywqDMBAAd5NNomA/xUtv/ZoiVqjgA7TS3299TeshTnQcNkouuYoNVd/IpZrntr+/q65rHlcnxes5Tu3Sl+sTKepxasphqbtmmUXkJufl1kVZflsPGRSgCCUoO0gpK1GlrJSVslJWyrqXt032P+x2c0d5bRhvz1kcs3i+8MziKXvKhmd4hmd4AS/gBbyAF/EiXsSLeAkv8dvTfs6NPGRQgCKU6J3l7DzilxRykIcMClCEErQXP30oExg=");
 
-        Mechs.dart.weapon = useless;
+        //Mechs.dart.weapon = useless;
         Mechs.dart.health *= 10;
         Mechs.delta.weapon = useless;
         Mechs.delta.health *= 10;
@@ -909,10 +951,9 @@ public class Assimilation extends Plugin{
         for(Block b : content.blocks()){
             b.health *= 10;
         }
-
         rules.canGameOver = false;
         rules.unitDamageMultiplier = 10;
-        rules.playerDamageMultiplier = 1;
+        rules.playerDamageMultiplier = 1 + 238;
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
