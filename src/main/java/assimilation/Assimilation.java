@@ -27,6 +27,7 @@ import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.prefs.Preferences;
 
 import static mindustry.Vars.*;
@@ -66,6 +67,7 @@ public class Assimilation extends Plugin{
     private DBInterface donationDB = new DBInterface("donation_data");
 
     private StringHandler stringHandler = new StringHandler();
+    private PipeHandler hubPipe = new PipeHandler("/tmp/hubPIPEassim");
 
     //register event handlers and create variables in the constructor
     public void init(){
@@ -73,6 +75,14 @@ public class Assimilation extends Plugin{
         playerDataDB.connect("data/server_data.db");
         playerConfigDB.connect(playerDataDB.conn);
         donationDB.connect(playerDataDB.conn);
+        hubPipe.on("test", (e) ->{
+            Log.info("Recieved test from hub with argument: " + e);
+            for(Player ply : playerGroup.all()){
+                ply.sendMessage("Pipe test");
+            }
+        });
+
+        hubPipe.beginRead();
 
         initRules();
 
@@ -667,6 +677,7 @@ public class Assimilation extends Plugin{
                 player.sendMessage("[accent]Code red over.");
             });
 
+
             Time.runTask(60 * 60 * 2, () -> {
                 team.coderedAllowed = true;
             });
@@ -916,7 +927,7 @@ public class Assimilation extends Plugin{
 
         cellSpawn = Schematics.readBase64("bXNjaAB4nE2QywqDMBAAd5NNomA/xUtv/ZoiVqjgA7TS3299TeshTnQcNkouuYoNVd/IpZrntr+/q65rHlcnxes5Tu3Sl+sTKepxasphqbtmmUXkJufl1kVZflsPGRSgCCUoO0gpK1GlrJSVslJWyrqXt032P+x2c0d5bRhvz1kcs3i+8MziKXvKhmd4hmd4AS/gBbyAF/EiXsSLeAkv8dvTfs6NPGRQgCKU6J3l7DzilxRykIcMClCEErQXP30oExg=");
 
-        //Mechs.dart.weapon = useless;
+        Mechs.dart.weapon = useless;
         Mechs.dart.health *= 10;
         Mechs.delta.weapon = useless;
         Mechs.delta.health *= 10;
@@ -953,7 +964,7 @@ public class Assimilation extends Plugin{
         }
         rules.canGameOver = false;
         rules.unitDamageMultiplier = 10;
-        rules.playerDamageMultiplier = 1 + 238;
+        rules.playerDamageMultiplier = 1;
         rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
