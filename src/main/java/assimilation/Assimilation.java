@@ -111,7 +111,7 @@ public class Assimilation extends Plugin{
         Events.on(EventType.PlayerConnect.class, event ->{
             for(Player ply : playerGroup.all()){
                 if(event.player.uuid.equals(ply.uuid)){
-                    Call.onInfoMessage("[scarlet]Already connected to this server");
+                    Call.onInfoMessage(event.player.con, "[scarlet]Already connected to this server");
                     Call.onConnect(event.player.con, "aamindustry.play.ai", 6567);
                     return;
                 }
