@@ -65,13 +65,12 @@ public class Assimilation extends Plugin{
     private DBInterface playerDataDB = new DBInterface("player_data");
     private DBInterface playerConfigDB = new DBInterface("player_config");
 
-    private DBInterface networkDB = new DBInterface("player_data");
-    private DBInterface donationDB = new DBInterface("donation_data");
+    private DBInterface networkDB = new DBInterface("player_data", true);
 
 
 
     private StringHandler stringHandler = new StringHandler();
-    private PipeHandler hubPipe = new PipeHandler("/tmp/hubPIPEassim");
+    private PipeHandler hubPipe = new PipeHandler("../network-files/hubPIPEassim");
 
     //register event handlers and create variables in the constructor
     public void init(){
@@ -79,15 +78,20 @@ public class Assimilation extends Plugin{
         playerDataDB.connect("data/server_data.db");
         playerConfigDB.connect(playerDataDB.conn);
 
-        networkDB.connect("../hub-server/data/server_data.db");
-        donationDB.connect(networkDB.conn);
+        networkDB.connect("../network-files/network_data.db");
 
         hubPipe.on("test", (e) ->{
             Log.info("Recieved test from hub with argument: " + e);
             Call.sendMessage("Pipe test");
+
         });
 
         hubPipe.on("say", Call::sendMessage);
+
+        hubPipe.on("donation", (information) ->{
+            String info[] = information.split(",");
+            updateDonator(info[0], Integer.parseInt(info[1]));
+        });
 
         hubPipe.beginRead();
 
@@ -183,7 +187,7 @@ public class Assimilation extends Plugin{
                         if (players.get(ply.uuid).connected) {
                             int addXp = 10 * (players.get(ply.uuid).donateLevel + 1);
                             ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
-                            playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
+                            playerDataDB.safePut(ply.uuid,"xp", (int) playerDataDB.safeGet(ply.uuid,"xp") + addXp);
                         }
                     }
                 }
@@ -212,31 +216,42 @@ public class Assimilation extends Plugin{
         Events.on(EventType.PlayerJoin.class, event ->{
             // Databasing stuff first:
             if(!playerDataDB.hasRow(event.player.uuid)){
-                Log.info("New player, adding to tables...");
+                Log.info("New player, adding to local tables...");
                 playerDataDB.addRow(event.player.uuid);
                 playerConfigDB.addRow(event.player.uuid);
             }
+            if(!networkDB.hasRow(event.player.uuid)){
+                Log.info("New player, adding to network tables...");
+                networkDB.addRow(event.player.uuid);
+            }
+
             playerDataDB.loadRow(event.player.uuid);
             playerConfigDB.loadRow(event.player.uuid);
 
-            if((int) playerConfigDB.entries.get(event.player.uuid).get("defaultRank") == 0){
-                playerConfigDB.entries.get(event.player.uuid).put("defaultRank", 1);
+            networkDB.loadRow(event.player.uuid);
+
+            if((int) playerConfigDB.safeGet(event.player.uuid,"defaultRank") == 0){
+                playerConfigDB.safePut(event.player.uuid,"defaultRank", 1);
             }
 
             // Check for donation expiration
-            int dLevel = (int) playerDataDB.entries.get(event.player.uuid).get("donatorLevel");
+            int dLevel = (int) networkDB.safeGet(event.player.uuid,"donatorLevel");
             if(dLevel != 0 && donationExpired(event.player.uuid)){
                 event.player.sendMessage("\n[accent]You're donator rank has expired!");
-                playerDataDB.entries.get(event.player.uuid).put("donatorLevel", 0);
+                networkDB.safePut(event.player.uuid,"donatorLevel", 0);
                 dLevel = 0;
             }
 
             // Determine rank and save name to database
 
-            event.player.name = stringHandler.determineRank((int) playerDataDB.entries.get(event.player.uuid).get("xp")) + " " + stringHandler.donatorMessagePrefix(dLevel) + Strings.stripColors(event.player.name);
+            networkDB.safePut(event.player.uuid,"latestName", event.player.name);
+            networkDB.saveRow(event.player.uuid, false);
+
+            event.player.name = stringHandler.determineRank((int) playerDataDB.safeGet(event.player.uuid,"xp")) + " " + stringHandler.donatorMessagePrefix(dLevel) + Strings.stripColors(event.player.name);
 
 
-            playerDataDB.entries.get(event.player.uuid).put("latestName", event.player.name);
+            playerDataDB.safePut(event.player.uuid,"latestName", event.player.name);
+
 
             event.player.sendMessage(leaderboard(5));
 
@@ -245,12 +260,13 @@ public class Assimilation extends Plugin{
             CustomPlayer ply;
 
             if(!players.containsKey(event.player.uuid)){
-                ply = new CustomPlayer(event.player, 0, (int) playerDataDB.entries.get(event.player.uuid).get("playtime"));
+                ply = new CustomPlayer(event.player, 0, (int) networkDB.safeGet(event.player.uuid,"playTime"));
                 ply.eventCalls = dLevel; // CHANGE THIS | why tho?
                 players.put(event.player.uuid, ply);
             }else{
                 ply = players.get(event.player.uuid);
             }
+            ply.playTime = (int) networkDB.safeGet(event.player.uuid,"playTime");
             ply.donateLevel = dLevel;
             ply.connected = true;
 
@@ -283,7 +299,7 @@ public class Assimilation extends Plugin{
             event.player.setTeam(Team.all()[teamCount+6]);
 
             // Create custom team and add it to the teams hash map
-            AssimilationTeam cTeam = new AssimilationTeam(event.player, (int) playerConfigDB.entries.get(event.player.uuid).get("defaultRank"));
+            AssimilationTeam cTeam = new AssimilationTeam(event.player, (int) playerConfigDB.safeGet(event.player.uuid,"defaultRank"));
             teams.put(event.player.getTeam(), cTeam);
             // Add player to the custom team
             cTeam.addPlayer(event.player);
@@ -334,10 +350,6 @@ public class Assimilation extends Plugin{
         Events.on(EventType.PlayerLeave.class, event ->{
             savePlayerData(event.player.uuid);
             players.get(event.player.uuid).connected = false;
-        });
-
-        Events.on(EventType.PlayerDonateEvent.class, event ->{
-            newDonator(event.email, event.uuid, event.level, event.amount);
         });
 
 
@@ -416,7 +428,7 @@ public class Assimilation extends Plugin{
             });
         });
 
-        handler.register("setxp", "<uuid> <playtime>", "Set the xp of a player", args -> {
+        handler.register("setxp", "<uuid> <xp>", "Set the xp of a player", args -> {
             int newXp;
             try{
                 newXp = Integer.parseInt(args[1]);
@@ -427,10 +439,10 @@ public class Assimilation extends Plugin{
 
             if(!playerDataDB.entries.containsKey(args[0])){
                 playerDataDB.loadRow(args[0]);
-                playerDataDB.entries.get(args[0]).put("xp", newXp);
+                playerDataDB.safePut(args[0],"xp", newXp);
                 playerDataDB.saveRow(args[0]);
             }else{
-                playerDataDB.entries.get(args[0]).put("xp", newXp);
+                playerDataDB.safePut(args[0],"xp", newXp);
             }
             Log.info("Set uuid " + args[0] + " to have xp of " + args[1]);
 
@@ -444,33 +456,6 @@ public class Assimilation extends Plugin{
         handler.register("reset_wins", "Sets all monthWins to 0.", args ->{
             winsReset();
             Log.info("Monthly wins reset.");
-        });
-
-        handler.register("add_donator", "<uuid> <level> <period>", "Adds a donator", args -> {
-            int level;
-            try{
-                level = Integer.parseInt(args[1]);
-            }catch(NumberFormatException e){
-                Log.info("Invalid xp input '" + args[1] + "'");
-                return;
-            }
-
-            int period;
-            try{
-                period = Integer.parseInt(args[2]);
-            }catch(NumberFormatException e){
-                Log.info("Invalid period input '" + args[2] + "'");
-                return;
-            }
-
-            if(!playerDataDB.hasRow(args[0])){
-                Log.info("No uuid: " + args[0] + " in database");
-                return;
-            }
-
-            addDonator(args[0], level, period);
-            Log.info("Set uuid " + args[0] + " to have donator level of " + args[1] + " for " + period + " months");
-
         });
 
 
@@ -582,18 +567,7 @@ public class Assimilation extends Plugin{
         });
 
         handler.<Player>register("d", "<key>", "Activate a donation key", (args, player) ->{
-            if(donationDB.hasRow(args[0])){
-                donationDB.loadRow(args[0]);
-                int level = (int) donationDB.entries.get(args[0]).get("level");
-                int period = (int) donationDB.entries.get(args[0]).get("period");
-                addDonator(player.uuid, level, period);
-
-                player.sendMessage("[gold]Key verified! Enjoy your [scarlet]" + period + (period > 1 ? " months" : " month") + "[gold] of donator [scarlet]" + level + "[gold]!");
-                donationDB.customUpdate("DELETE FROM donation_data WHERE donateKey=\"" + args[0] + "\";");
-                Log.info("Removed key " + args[0] + " from database");
-                return;
-            }
-            player.sendMessage("[accent]Invalid key!");
+            player.sendMessage("[accent]Go to [scarlet]/hub [accent]to activate your key");
         });
 
         handler.<Player>register("members", "List all the members in your team and their rank", (args, player) -> {
@@ -633,7 +607,7 @@ public class Assimilation extends Plugin{
                 return;
             }
 
-            playerConfigDB.entries.get(player.uuid).put("defaultRank", dRank);
+            playerConfigDB.safePut(player.uuid,"defaultRank", dRank);
             if(players.get(player.uuid).assimRank == 4) teams.get(player.getTeam()).defaultRank = dRank;
             player.sendMessage("[accent]Successfully updated default rank to [scarlet]" + dRank);
 
@@ -679,13 +653,13 @@ public class Assimilation extends Plugin{
         });
 
         handler.<Player>register("xp", "Show your xp", (args, player) ->{
-            int xp = (int) playerDataDB.entries.get(player.uuid).get("xp");
+            int xp = (int) playerDataDB.safeGet(player.uuid,"xp");
             String nextRank = stringHandler.determineRank(xp+15000);
             player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/15000+1)*15000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
         });
 
         handler.<Player>register("wins", "Show your wins", (args, player) ->{
-            int wins = (int) playerDataDB.entries.get(player.uuid).get("monthWins");
+            int wins = (int) playerDataDB.safeGet(player.uuid,"monthWins");
             player.sendMessage("[scarlet]" + wins + "[accent] wins.");
         });
 
@@ -976,7 +950,7 @@ public class Assimilation extends Plugin{
             if(players.get(ply.uuid).connected) {
                 int addXp = 100*(players.get(ply.uuid).donateLevel+1);
                 ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for assimilating " + oldAssimilationTeam.name + "[accent]'s team!");
-                playerDataDB.entries.get(ply.uuid).put("xp", (int) playerDataDB.entries.get(ply.uuid).get("xp") + addXp);
+                playerDataDB.safePut(ply.uuid,"xp", (int) playerDataDB.safeGet(ply.uuid,"xp") + addXp);
             }
         }
 
@@ -984,7 +958,7 @@ public class Assimilation extends Plugin{
             if(players.get(newAssimilationTeam.commander.uuid).connected){
                 int addXp = 100*(players.get(newAssimilationTeam.commander.uuid).donateLevel+1);
                 newAssimilationTeam.commander.sendMessage("[accent]+[scarlet]"+ addXp+ "xp[accent] for assimilating " + ply.name);
-                playerDataDB.entries.get(newAssimilationTeam.commander.uuid).put("xp", (int) playerDataDB.entries.get(newAssimilationTeam.commander.uuid).get("xp") + addXp);
+                playerDataDB.safePut(newAssimilationTeam.commander.uuid,"xp", (int) playerDataDB.safeGet(newAssimilationTeam.commander.uuid,"xp") + addXp);
             }
 
             Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
@@ -1065,10 +1039,9 @@ public class Assimilation extends Plugin{
             playerDataDB.loadRow(winPlayer);
             playerConfigDB.loadRow(winPlayer);
         }
-        HashMap<String, Object> entry = playerDataDB.entries.get(winPlayer);
-        entry.put("monthWins", (int) entry.get("monthWins") + 1);
-        entry.put("allWins", (int) entry.get("allWins") + 1);
-        entry.put("xp", (int) entry.get("xp") + 500);
+        playerDataDB.safePut(winPlayer, "monthWins", (int) playerDataDB.safeGet(winPlayer, "monthWins") + 1);
+        playerDataDB.safePut(winPlayer, "allWins", (int) playerDataDB.safeGet(winPlayer, "allWins") + 1);
+        playerDataDB.safePut(winPlayer, "xp", (int) playerDataDB.safeGet(winPlayer, "xp") + 500);
         for(Player player: playerGroup.all()){
             if(player.uuid.equals(winPlayer)){
                 player.sendMessage("[accent]+[scarlet]500xp[accent] for winning");
@@ -1111,9 +1084,11 @@ public class Assimilation extends Plugin{
         }
         Log.info("Saving " + uuid + " data...");
         CustomPlayer ply = players.get(uuid);
-        playerDataDB.entries.get(uuid).put("playtime", ply.playTime);
+        networkDB.loadRow(uuid);
+        networkDB.safePut(uuid,"playTime", ply.playTime);
         playerDataDB.saveRow(uuid);
         playerConfigDB.saveRow(uuid);
+        networkDB.saveRow(uuid);
     }
 
     // All long term stuff here:
@@ -1133,14 +1108,22 @@ public class Assimilation extends Plugin{
         prefs.putInt("month", currMonth);
     }
 
-    boolean donationExpired(String uuid){ return (int) playerDataDB.entries.get(uuid).get("donateExpire") <= System.currentTimeMillis()/1000; }
+    boolean donationExpired(String uuid){ return (int) networkDB.safeGet(uuid,"donateExpire") <= System.currentTimeMillis()/1000; }
+
+    public void updateDonator(String uuid, int level){
+
+        if(players.containsKey(uuid)) {
+            players.get(uuid).donateLevel = level;
+            players.get(uuid).eventCalls = level;
+        }
+    }
 
     void rankReset(){
         // Reset ranks
         playerDataDB.setColumn("xp", 0);
 
         for(Object uuid: playerDataDB.entries.keySet().toArray()){
-            playerDataDB.entries.get(uuid).put("xp", 0);
+            playerDataDB.safePut((String) uuid,"xp", 0);
         }
     }
 
@@ -1148,55 +1131,7 @@ public class Assimilation extends Plugin{
         playerDataDB.setColumn("monthWins", 0);
 
         for(Object uuid: playerDataDB.entries.keySet().toArray()){
-            playerDataDB.entries.get(uuid).put("monthWins", 0);
+            playerDataDB.safePut((String) uuid,"monthWins", 0);
         }
-    }
-
-    void newDonator(String email, String uuid, int level, int amount){
-
-        if(!playerDataDB.hasRow(uuid)){
-            Log.info("uuid does not exist in database!");
-            byte[] b = new byte[8];
-            rand.nextBytes(b);
-            String donateKey = String.valueOf(new BigInteger(b)); // No need to worry about collisions now, at least not for 239847 years.
-            donateKey = donateKey.replace("-","");
-            donationDB.addRow(donateKey);
-            donationDB.loadRow(donateKey);
-            donationDB.entries.get(donateKey).put("level", level);
-            donationDB.entries.get(donateKey).put("period", amount/(level*5));
-            donationDB.saveRow(donateKey);
-            Events.fire(new EventType.CustomEvent(new String[]{"Donation failed", email, donateKey}));
-            return;
-        }
-
-        addDonator(uuid, level, amount/(level*5));
-        Events.fire(new EventType.CustomEvent(new String[]{"Donation success", email}));
-
-    }
-
-    void addDonator(String uuid, int level, int period){
-        if(!playerDataDB.entries.containsKey(uuid)){
-            playerDataDB.loadRow(uuid);
-        }
-        Call.sendMessage("[gold]" + playerDataDB.entries.get(uuid).get("latestName") + "[gold] just donated to the server!");
-        if(level > (int) playerDataDB.entries.get(uuid).get("donatorLevel")){
-            Log.info("Most recent donation outranks previous.");
-            playerDataDB.entries.get(uuid).put("donateExpire", 0);
-        };
-        playerDataDB.entries.get(uuid).put("donatorLevel", level);
-        long currentPeriod = (int) playerDataDB.entries.get(uuid).get("donateExpire") - System.currentTimeMillis()/1000;
-        currentPeriod = Math.max(0, currentPeriod);
-
-        playerDataDB.entries.get(uuid).put("donateExpire", System.currentTimeMillis()/1000 + 2592000*period + currentPeriod);
-        playerDataDB.saveRow(uuid);
-        playerDataDB.loadRow(uuid);
-
-        if(players.containsKey(uuid)){
-            players.get(uuid).player.name = stringHandler.determineRank((int) playerDataDB.entries.get(uuid).get("xp")) + " " + stringHandler.donatorMessagePrefix(level) + Strings.stripColors(players.get(uuid).player.name);
-            players.get(uuid).donateLevel = level;
-            players.get(uuid).eventCalls = level;
-        }
-
-        Log.info("Added " + period + (period > 1 ? " months" : " month") + " of donator " + level + " to uuid: " + uuid);
     }
 }
