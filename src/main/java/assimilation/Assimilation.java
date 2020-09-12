@@ -714,10 +714,7 @@ public class Assimilation extends Plugin{
         });
 
         handler.<Player>register("tp", "[player/id]", "[sky]Teleport to player (donator only)", (args, player) -> {
-            if(players.get(player.uuid).donateLevel < 1){
-                player.sendMessage("[accent]Only donators have access to this command");
-                return;
-            }
+
 
             if (args.length == 0) {
                 String s = "[accent]Use [orange]/tp [player/id][accent] to teleport to a players location.\n";
@@ -726,6 +723,11 @@ public class Assimilation extends Plugin{
                     s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
                 }
                 player.sendMessage(s);
+                return;
+            }
+
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
                 return;
             }
 
@@ -760,10 +762,7 @@ public class Assimilation extends Plugin{
         });
 
         handler.<Player>register("join", "[player/id]", "[sky]Assimilate into another players team (donator only)", (args, player) -> {
-            if(players.get(player.uuid).donateLevel < 1){
-                player.sendMessage("[accent]Only donators have access to this command");
-                return;
-            }
+
 
             AssimilationTeam thisTeam = teams.get(player.getTeam());
 
@@ -776,6 +775,11 @@ public class Assimilation extends Plugin{
                     }
                 }
                 player.sendMessage(s);
+                return;
+            }
+
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
                 return;
             }
 
@@ -826,15 +830,16 @@ public class Assimilation extends Plugin{
         });
 
         handler.<Player>register("ev", "[event]", "[sky]Start an event (donator only)", (args, player) -> {
-            if(players.get(player.uuid).donateLevel < 1){
-                player.sendMessage("[accent]Only donators have access to this command");
-                return;
-            }
+
             if(args.length == 0){
                 player.sendMessage("[accent]You can call the following events:\n\n" +
                         "[gold]1 [accent]- Lich\n" +
                         "[gold]2 [accent]- Instant build\n" +
                         "[gold]3 [accent]- Zombies");
+                return;
+            }
+            if(players.get(player.uuid).donateLevel < 1){
+                player.sendMessage("[accent]Only donators have access to this command");
                 return;
             }
             if(players.get(player.uuid).eventCalls < 1){
