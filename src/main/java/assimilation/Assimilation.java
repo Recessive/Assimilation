@@ -137,6 +137,11 @@ public class Assimilation extends Plugin{
                     Call.setHudTextReliable(player.con, "[accent]Play time: [scarlet]" + players.get(player.uuid).playTime + "[accent] mins.");
                 }
             }
+
+            if(Math.round(counter) % (60*60*30) == 0){
+                rules.unitDamageMultiplier *= 1.2;
+                Call.sendMessage("[accent]Units now deal [scarlet]20%[accent] more damage");
+            }
         });
 
         Events.on(EventType.BlockBuildEndEvent.class, event ->{
