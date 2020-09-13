@@ -99,7 +99,7 @@ public class Assimilation extends Plugin{
                     && players.get(action.player.uuid).assimRank < 3) {
                 return false;
             }
-            if (action.player != null
+            if (action.player != null && teams.containsKey(action.player.getTeam()) && players.containsKey(action.player.uuid)
             && players.get(action.player.uuid).assimRank != 4 && teams.get(action.player.getTeam()).codered){
                 return false;
             }
@@ -231,8 +231,6 @@ public class Assimilation extends Plugin{
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
 
                 AssimilationTeam oldTeam = teams.get(players.get(event.player.uuid).lastTeam);
-
-                event.player.beginRespawning((SpawnerTrait) oldTeam.homeCell.myCore); // Hopefully fixes the not spawning bug
 
                 // Remove old player object and replace with new one
                 oldTeam.players.removeIf(player -> player.uuid.equals(event.player.uuid));
