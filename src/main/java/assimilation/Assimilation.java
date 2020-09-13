@@ -123,6 +123,11 @@ public class Assimilation extends Plugin{
                 return false;
             }
 
+            if (action.player != null
+            && action.block != null && action.block == Blocks.commandCenter && players.get(action.player.uuid).assimRank < 2){
+                return false;
+            }
+
             return true;
         });
 
