@@ -10,6 +10,7 @@ import mindustry.*;
 import mindustry.content.*;
 import mindustry.core.GameState;
 import mindustry.entities.bullet.BulletType;
+import mindustry.entities.traits.SpawnerTrait;
 import mindustry.entities.type.*;
 import mindustry.game.*;
 import mindustry.gen.*;
@@ -230,6 +231,8 @@ public class Assimilation extends Plugin{
                 event.player.setTeam(players.get(event.player.uuid).player.getTeam());
 
                 AssimilationTeam oldTeam = teams.get(players.get(event.player.uuid).lastTeam);
+
+                event.player.beginRespawning((SpawnerTrait) oldTeam.homeCell.myCore); // Hopefully fixes the not spawning bug
 
                 // Remove old player object and replace with new one
                 oldTeam.players.removeIf(player -> player.uuid.equals(event.player.uuid));
