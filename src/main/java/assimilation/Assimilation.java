@@ -144,7 +144,8 @@ public class Assimilation extends Plugin{
 
             if(interval.get(timerDamageMultiply, damageMultiplyTime)){
                 rules.unitDamageMultiplier *= 1.2;
-                Call.sendMessage("[accent]Units now deal [scarlet]20%[accent] more damage");
+                rules.unitHealthMultiplier *= 1.2;
+                Call.sendMessage("[accent]Units now deal [scarlet]20%[accent] more damage and have [scarlet]20%[accent] more health");
             }
         });
 
