@@ -61,6 +61,8 @@ public class Assimilation extends Plugin{
     private final static int timerMinute = 0, timerDamageMultiply = 1;
     private Interval interval = new Interval(10);
 
+    private float multiplier = 1;
+
 
     private HashMap<String, CustomPlayer> players = new HashMap<>();
     private HashMap<Team, AssimilationTeam> teams = new HashMap<>();
@@ -143,6 +145,7 @@ public class Assimilation extends Plugin{
             }
 
             if(interval.get(timerDamageMultiply, damageMultiplyTime)){
+                multiplier *= 1.2;
                 rules.unitDamageMultiplier *= 1.2;
                 rules.unitHealthMultiplier *= 1.2;
                 Call.sendMessage("[accent]Units now deal [scarlet]20%[accent] more damage and have [scarlet]20%[accent] more health");
@@ -675,6 +678,10 @@ public class Assimilation extends Plugin{
 
         handler.<Player>register("leaderboard", "Displays leaderboard", (args, player) ->{
             player.sendMessage(leaderboard(5));
+        });
+
+        handler.<Player>register("multiplier", "Displays unit damage/health multiplier", (args, player) ->{
+            player.sendMessage("[accent]Multiplier is [scarlet]" + Math.round(multiplier * 100) / 100f + "[accent]x");
         });
 
         handler.<Player>register("discord", "Prints the discord link", (args, player) -> {
