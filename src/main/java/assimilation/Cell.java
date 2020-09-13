@@ -98,14 +98,14 @@ public class Cell {
 
         if(progress > Assimilation.cellRequirement && owner == null){
             if(ply != null && ply.getTeam() != owner) {
-                Call.setHudText(ply.con, "[accent]Play time: [scarlet]" + players.get(ply.uuid).playTime + "[accent] mins.\n       [gold]Captured!");
+                Call.setHudText(ply.con, "[accent]Play time: [scarlet]" + ply.playTime + "[accent] mins.\n       [gold]Captured!");
             }
             owner = tile.getTeam();
             captureProgress.clear();
             Events.fire(new CellCaptureEvent(this));
         }else{
             float percentage = ((float) progress / (float) Assimilation.cellRequirement)*100;
-            if(ply != null && ply.getTeam() != owner) Call.setHudText(ply.con,"[accent]Play time: [scarlet]" + players.get(ply.uuid).playTime + "[accent] mins.\n  [scarlet]" + Math.round(percentage * 100.0) / 100.0 + "% [accent]captured");;
+            if(ply != null && ply.getTeam() != owner) Call.setHudText(ply.con,"[accent]Play time: [scarlet]" + ply.playTime + "[accent] mins.\n  [scarlet]" + Math.round(percentage * 100.0) / 100.0 + "% [accent]captured");;
 
             captureProgress.put(tileTeam, progress);
         }

@@ -8,19 +8,16 @@ public class CustomPlayer{
     public int assimRank;
     public Team lastTeam;
     protected Player player;
-    protected int playTime;
     public boolean connected;
-    public int donateLevel = 0;
     public int eventCalls = 0;
     public int joinsLeft = 1;
 
 
-    public CustomPlayer(Player player, int assimRank, int playTime){
+    public CustomPlayer(Player player, int assimRank){
         this.player = player;
         this.assimRank = assimRank;
         this.lastTeam = player.getTeam();
         this.assimRank = 4;
-        this.playTime = playTime;
         this.connected = true;
     }
 

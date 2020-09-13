@@ -16,7 +16,7 @@ ext{
 
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
-    compileOnly 'com.github.Recessive.aaMindustryServer:core:v2.0.4'
+    compileOnly 'com.github.Recessive.aaMindustryServer:core:v2.0.5'
     compile group:'org.xerial', name:'sqlite-jdbc', version:'3.8.11.2'
 }
 
