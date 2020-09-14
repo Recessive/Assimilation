@@ -309,6 +309,15 @@ public class Assimilation extends Plugin{
         });
 
 
+        Events.on(EventType.CustomEvent.class, event ->{
+           if(event.value instanceof String[] && ((String[]) event.value)[0].equals("newName")){
+               String[] val = (String[]) event.value;
+               Player ply = players.get(val[1]).player;
+               ply.name = stringHandler.determineRank((int) playerDataDB.safeGet(val[1],"xp")) + " " + ply.name;
+           }
+        });
+
+
     }
 
     //register commands that run on the server
@@ -769,6 +778,7 @@ public class Assimilation extends Plugin{
         for(Block b : content.blocks()){
             b.health *= 10;
         }
+
         rules.canGameOver = false;
         rules.unitDamageMultiplier = 10;
         rules.playerDamageMultiplier = 1;
