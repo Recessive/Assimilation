@@ -335,6 +335,7 @@ public class Assimilation extends Plugin{
             if(generation < 0.25f){
                 cellSpawn = Schematics.readBase64("bXNjaAB4nE2RWw6CMBBFp3TaGRK34gJcjSGkH75KohK3ryA9ykc5tKe3DVd66YNoHW5F+lcZLsdxupdO/DzX8XmaquyWiX2dx2uZHyJykPZ0yxAYfp8RUihBGTLINwokB6LCN3mlCCmUoAwZ5P+XXV/ddsqSoawaq21HZEds9/qQMdc8xVM8xVO8hJfwEl7Cy3gZL+NlPMMzPKMFowWjBaMFowWjBSPZ+QFOC04LTgtOC04LTgtOC74lvgFcRBAe");
                 rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 1000, Items.metaglass, 200, Items.silicon, 1500, Items.titanium, 500);
+                rules.bannedBlocks.addAll(Blocks.crawlerFactory, Blocks.daggerFactory, Blocks.titanFactory, Blocks.fortressFactory);
             }
             world.loadGenerator(generator);
             Log.info("Map generated.");
@@ -576,6 +577,15 @@ public class Assimilation extends Plugin{
             }
 
 
+        });
+
+        handler.<Player>register("respawn", "Respawn (for when you cant when you join)", (args, player) ->{
+            if(!player.dead){
+                player.sendMessage("[accent]Can only use /respawn if you are dead!");
+                return;
+            }
+            player.kill();
+            player.beginRespawning((SpawnerTrait) teams.get(player.getTeam()).homeCell.myCore.entity);
         });
 
         handler.<Player>register("xp", "Show your xp", (args, player) ->{
