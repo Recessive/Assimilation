@@ -14,6 +14,7 @@ import mindustry.entities.traits.SpawnerTrait;
 import mindustry.entities.type.*;
 import mindustry.game.*;
 import mindustry.gen.*;
+import mindustry.net.Administration;
 import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
 import mindustry.type.Mech;
@@ -96,7 +97,7 @@ public class Assimilation extends Plugin{
 
             if (build != null && action.player != null && build.get(0) != null
                     && ((CustomPlayer) build.get(0)).assimRank > players.get(action.player.uuid).assimRank
-                    && players.get(action.player.uuid).assimRank < 3) {
+                    && players.get(action.player.uuid).assimRank < 3 && action.type != Administration.ActionType.tapTile) {
                 return false;
             }
             if (action.player != null && teams.containsKey(action.player.getTeam()) && players.containsKey(action.player.uuid)
