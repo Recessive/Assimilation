@@ -30,6 +30,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.prefs.Preferences;
 
 import static mindustry.Vars.*;
@@ -407,8 +408,7 @@ public class Assimilation extends Plugin{
     @Override
     public void registerClientCommands(CommandHandler handler) {
 
-        // Register the re-rank command
-        handler.<Player>register("rerank", "[player/id] [rank]", "Re-rank a player on your team to [scarlet]0[white]: Bot, [scarlet]1[white]: Drone, [scarlet]2[white]: Private or [scarlet]3[white]: Captain", (args, player) -> {
+        Function<String[], Consumer<Player>> rerankCommand = args -> player -> {
             if (args.length == 0) {
                 String s = "[accent]Use [orange]/rerank [player/id] [rank][accent] to re-rank a player to [scarlet]0[accent]: Bot, [scarlet]1[accent]: Drone, [scarlet]2[accent]: Private or [scarlet]3[accent]: Captain\n\n";
                 s += "You are able to rerank the following players:";
@@ -496,6 +496,15 @@ public class Assimilation extends Plugin{
             s2 += append;
             player.sendMessage(s1);
             other.sendMessage(s2);
+        };
+
+        // Register the re-rank command
+        handler.<Player>register("rerank", "[player/id] [rank]", "Re-rank a player on your team to [scarlet]0[white]: Bot, [scarlet]1[white]: Drone, [scarlet]2[white]: Private or [scarlet]3[white]: Captain", (args, player) -> {
+            rerankCommand.apply(args).accept(player);
+        });
+
+        handler.<Player>register("rr", "[player/id] [rank]", "Alias for rerank", (args, player) -> {
+            rerankCommand.apply(args).accept(player);
         });
 
         handler.<Player>register("members", "List all the members in your team and their rank", (args, player) -> {
