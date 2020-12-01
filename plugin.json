@@ -1,7 +1,7 @@
 {
   "name": "Assimilation",
   "author": "Recessive",
-  "main": "assimilation.Assimilation",
+  "main": "main.Assimilation",
   "description": "A plugin for the assimilation gamemode",
-  "version": 0.0
+  "version": 0.1
 }

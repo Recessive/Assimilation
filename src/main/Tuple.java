@@ -1,4 +1,4 @@
-package assimilation;
+package main;
 
 public class Tuple<type1, type2> {
 

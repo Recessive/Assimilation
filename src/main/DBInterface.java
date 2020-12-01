@@ -1,4 +1,4 @@
-package assimilation;
+package main;
 
 import arc.util.Time;
 
@@ -116,9 +116,9 @@ public class DBInterface {
     public void saveRow(String key, boolean drop){
         try {
             HashMap<String, Object> vals = entries.get(key);
-
+            String sql = "UPDATE " + this.table + " SET ";
             try {
-                String sql = "UPDATE " + this.table + " SET ";
+
                 int c = 0;
                 for (Object _key : vals.keySet()) {
                     if (vals.get(_key) == null) {
@@ -143,6 +143,7 @@ public class DBInterface {
                 stmt.executeUpdate(sql);
                 stmt.close();
             } catch (SQLException e) {
+                System.out.println("Query: " + sql);
                 e.printStackTrace();
             }
 

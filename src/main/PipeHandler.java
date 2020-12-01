@@ -1,23 +1,29 @@
-package assimilation;
+package main;
 
-import arc.struct.Array;
+import arc.struct.Seq;
 import arc.util.Log;
-import arc.util.Time;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class PipeHandler {
     private String pipeName;
     private RandomAccessFile pipe;
 
-    private HashMap<String, Array<Consumer <String>>> actions = new HashMap<>();
+    public boolean invalid = false;
+
+    private HashMap<String, Seq<Consumer <String>>> actions = new HashMap<>();
 
     public PipeHandler(String pipeName){
         this.pipeName = pipeName;
+        if(pipeName == null){
+            this.invalid = true;
+            return;
+        }
         try {
             this.pipe = new RandomAccessFile(pipeName, "rw");
             Log.info("Connected to pipe " + pipeName);
@@ -38,7 +44,7 @@ public class PipeHandler {
         if(actions.containsKey(message)){
             actions.get(message).add(r);
         }else{
-            actions.put(message, Array.with(r));
+            actions.put(message, Seq.with(r));
         }
 
     }
@@ -51,7 +57,7 @@ public class PipeHandler {
     private void fire(String message){
         String[] splt = message.split(";");
         String key = splt[0];
-        String value = splt[1];
+        String value = splt.length > 1 ? splt[1] : null;
         actions.get(key).each((r) -> {r.accept(value);});
     }
 

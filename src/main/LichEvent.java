@@ -1,12 +1,12 @@
-package assimilation;
+package main;
 
 import arc.util.Log;
 import arc.util.Time;
 import mindustry.Vars;
 import mindustry.content.UnitTypes;
-import mindustry.entities.type.BaseUnit;
 import mindustry.game.Team;
 import mindustry.gen.Call;
+import mindustry.gen.Unit;
 import mindustry.type.UnitType;
 
 import java.util.ArrayList;
@@ -26,12 +26,12 @@ public class LichEvent extends AssimilationEvent{
     public void execute() {
         game.eventActive = true;
         Time.runTask(delay, () -> {
-            Call.sendMessage("[gold]Lich [accent]event has begun! It ends in [scarlet]" + timeFrame/60 + "[accent] seconds!");
-            UnitType lich = UnitTypes.lich;
-            List<BaseUnit> units = new ArrayList<>();
+            Call.sendMessage("[gold]Zenith [accent]event has begun! It ends in [scarlet]" + timeFrame/60 + "[accent] seconds!");
+            UnitType lich = UnitTypes.zenith;
+            List<Unit> units = new ArrayList<>();
             for(Team t : teams.keySet()){
                 Cell spawnCell = teams.get(t).homeCell;
-                BaseUnit baseUnit = lich.create(t);
+                Unit baseUnit = lich.create(t);
                 baseUnit.set(spawnCell.x*8, spawnCell.y*8);
                 baseUnit.add();
                 units.add(baseUnit);
@@ -39,8 +39,8 @@ public class LichEvent extends AssimilationEvent{
 
             Time.runTask(timeFrame, () -> {
                 game.eventActive = false;
-                Call.sendMessage("[gold]Lich [accent]event is over!");
-                for(BaseUnit unit : units){
+                Call.sendMessage("[gold]Zenith [accent]event is over!");
+                for(Unit unit : units){
                     unit.kill();
                 }
             });

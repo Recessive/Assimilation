@@ -1,16 +1,15 @@
-package assimilation;
+package main;
 
 import arc.Events;
 import arc.math.Mathf;
 import arc.util.Time;
 import mindustry.content.Blocks;
-import mindustry.entities.type.Player;
 import mindustry.game.Schematic;
 import mindustry.game.Schematics;
 import mindustry.game.Team;
 import mindustry.gen.Call;
+import mindustry.gen.Player;
 import mindustry.type.ItemStack;
-import mindustry.world.Pos;
 import mindustry.world.Tile;
 import mindustry.world.blocks.storage.CoreBlock;
 
@@ -59,7 +58,7 @@ public class Cell {
     public void makeShard(){
         clearSpace(Blocks.coreShard.size);
         Tile coreTile = world.tile(x, y);
-        coreTile.link().removeNet();
+        coreTile.removeNet();
         coreTile.setNet(Blocks.coreShard, owner, 0);
         myCore = coreTile;
     }
@@ -67,7 +66,7 @@ public class Cell {
     public void clearSpace(int size){
         for(int xi = -size/2; xi < size/2+1; xi++){
             for(int yi = -size/2; yi < size/2+1; yi ++){
-                world.tile(x+xi, y+yi).link().removeNet();
+                world.tile(x+xi, y+yi).removeNet();
             }
         }
     }
@@ -77,10 +76,10 @@ public class Cell {
     }
 
     public void updateCapture(Tile tile, boolean breaking, Player ply){
-        Team tileTeam = tile.getTeam();
+        Team tileTeam = tile.team();
         int progress = 0;
-        if(captureProgress.containsKey(tile.getTeam())){
-            progress = captureProgress.get(tile.getTeam());
+        if(captureProgress.containsKey(tile.team())){
+            progress = captureProgress.get(tile.team());
         }
         Tuple<Float, Float> pos = new Tuple<>(tile.worldx(), tile.worldy());
 
@@ -97,15 +96,15 @@ public class Cell {
         }
 
         if(progress > Assimilation.cellRequirement && owner == null){
-            if(ply != null && ply.getTeam() != owner) {
+            if(ply != null && ply.team() != owner) {
                 Call.setHudText(ply.con, "[accent]Play time: [scarlet]" + ply.playTime + "[accent] mins.\n       [gold]Captured!");
             }
-            owner = tile.getTeam();
+            owner = tile.team();
             captureProgress.clear();
             Events.fire(new CellCaptureEvent(this));
         }else{
             float percentage = ((float) progress / (float) Assimilation.cellRequirement)*100;
-            if(ply != null && ply.getTeam() != owner) Call.setHudText(ply.con,"[accent]Play time: [scarlet]" + ply.playTime + "[accent] mins.\n  [scarlet]" + Math.round(percentage * 100.0) / 100.0 + "% [accent]captured");;
+            if(ply != null && ply.team() != owner) Call.setHudText(ply.con,"[accent]Play time: [scarlet]" + ply.playTime + "[accent] mins.\n  [scarlet]" + Math.round(percentage * 100.0) / 100.0 + "% [accent]captured");;
 
             captureProgress.put(tileTeam, progress);
         }
@@ -117,7 +116,7 @@ public class Cell {
             Float x = (Float) key.get(0);
             Float y = (Float) key.get(1);
             Tile tile = world.tileWorld(x, y);
-            if(tile.entity != null) Time.run(Mathf.random(60f), tile.entity::kill);
+            if(tile.build != null) Time.run(Mathf.random(60f), tile.build::kill);
         }
         owner = null;
         builds.clear();
@@ -147,8 +146,8 @@ public class Cell {
             Tile tile = world.tile(st.x + ox,st.y + oy);
             if(tile == null) return;
 
-            if(tile.link().block() != Blocks.air){
-                tile.link().removeNet();
+            if(tile.block() != Blocks.air){
+                tile.removeNet();
             }
 
             tile.setNet(st.block, owner, st.rotation);
@@ -168,14 +167,12 @@ public class Cell {
                 }
             }
 
-            if(st.block.posConfig){
-                tile.configureAny(Pos.get(tile.x - st.x + Pos.x(st.config), tile.y - st.y + Pos.y(st.config)));
-            }else{
-                tile.configureAny(st.config);
-            }
+
+            tile.build.configureAny(st.config);
+
             if(tile.block() instanceof CoreBlock && addItem){
                 for(ItemStack stack : state.rules.loadout){
-                    Call.transferItemTo(stack.item, stack.amount, tile.drawx(), tile.drawy(), tile);
+                    Call.setItem(tile.build, stack.item, stack.amount);
                 }
             }
         });

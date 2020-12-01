@@ -1,4 +1,4 @@
-package assimilation;
+package main;
 
 public abstract class AssimilationEvent {
 

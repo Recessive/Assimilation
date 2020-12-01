@@ -1,7 +1,7 @@
-package assimilation;
+package main;
 
-import mindustry.entities.type.Player;
 import mindustry.game.Team;
+import mindustry.gen.Player;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,7 +19,7 @@ public class AssimilationTeam{
     public boolean coderedAllowed = true;
 
     public AssimilationTeam(Player player, int defaultRank) {
-        this.team = player.getTeam();
+        this.team = player.team();
         this.name = player.name;
         this.commander = player;
         this.defaultRank = defaultRank;

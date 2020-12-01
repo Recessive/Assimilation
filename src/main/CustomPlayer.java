@@ -1,7 +1,7 @@
-package assimilation;
+package main;
 
-import mindustry.entities.type.Player;
 import mindustry.game.Team;
+import mindustry.gen.Player;
 
 public class CustomPlayer{
 
@@ -16,7 +16,7 @@ public class CustomPlayer{
     public CustomPlayer(Player player, int assimRank){
         this.player = player;
         this.assimRank = assimRank;
-        this.lastTeam = player.getTeam();
+        this.lastTeam = player.team();
         this.assimRank = 4;
         this.connected = true;
     }

@@ -4,6 +4,8 @@ version '1.0'
 
 sourceCompatibility = 1.8
 
+sourceSets.main.java.srcDirs = ["src"]
+
 repositories{
     mavenCentral()
     maven{ url 'https://www.jitpack.io' }
@@ -11,12 +13,12 @@ repositories{
 
 ext{
     //the build number that this plugin is made for
-    mindustryVersion = 'v104'
+    mindustryVersion = 'v120'
 }
 
 dependencies{
     compileOnly "com.github.Anuken.Arc:arc-core:$mindustryVersion"
-    compileOnly 'com.github.Recessive.aaMindustryServer:core:v2.0.5'
+    compileOnly 'com.github.Recessive.aaMindustryServerV6:core:v0.3'
     compile group:'org.xerial', name:'sqlite-jdbc', version:'3.8.11.2'
 }
 
@@ -24,5 +26,9 @@ jar{
     archiveFileName = "${project.archivesBaseName}.jar"
     from{
         configurations.runtimeClasspath.collect{it.isDirectory() ? it : zipTree(it)}
+    }
+
+    from(rootDir){
+        include "plugin.json"
     }
 }

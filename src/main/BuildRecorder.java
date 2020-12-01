@@ -1,4 +1,4 @@
-package assimilation;
+package main;
 
 import mindustry.world.Block;
 

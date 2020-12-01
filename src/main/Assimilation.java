@@ -1,28 +1,25 @@
-package assimilation;
+package main;
 
 import arc.*;
 import arc.func.Boolf;
 import arc.math.Mathf;
-import arc.struct.Array;
+import arc.struct.Seq;
 import arc.util.*;
 import arc.util.serialization.Base64Coder;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.core.GameState;
 import mindustry.entities.bullet.BulletType;
-import mindustry.entities.traits.SpawnerTrait;
-import mindustry.entities.type.*;
 import mindustry.game.*;
 import mindustry.gen.*;
+import mindustry.mod.Plugin;
 import mindustry.net.Administration;
-import mindustry.plugin.Plugin;
 import mindustry.type.ItemStack;
-import mindustry.type.Mech;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import mindustry.world.Block;
 import mindustry.world.Tile;
-import mindustry.world.blocks.defense.turrets.ChargeTurret;
+import mindustry.world.blocks.defense.turrets.PowerTurret;
 import mindustry.world.blocks.storage.CoreBlock;
 
 import java.math.BigInteger;
@@ -35,7 +32,7 @@ import java.util.prefs.Preferences;
 
 import static mindustry.Vars.*;
 
-public class Assimilation extends Plugin{
+public class Assimilation extends Plugin {
 
     private Preferences prefs;
     private Random rand = new Random(System.currentTimeMillis());
@@ -58,7 +55,7 @@ public class Assimilation extends Plugin{
     private List<Cell> freeCells = new ArrayList<>();
     private List<Cell> priorityCells = new ArrayList<>();
 
-    private Array<Array<ItemStack>> loadouts = new Array<>(4);
+    private Seq<Seq<ItemStack>> loadouts = new Seq<>(4);
 
     private final static int minuteTime = 60 * 60, damageMultiplyTime = 60 * 60 * 30;
     private final static int timerMinute = 0, timerDamageMultiply = 1;
@@ -93,21 +90,22 @@ public class Assimilation extends Plugin{
         Rank youtuber = new Rank("[#4d004d]{[scarlet]You[gray]tuber} [sky]", 0);
 
         netServer.admins.addActionFilter((action) -> {
+            if(action.tile == null) return true;
             Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
-            if(action.player != null && players.get(action.player.uuid).assimRank == 0) return false;
+            if(action.player != null && players.get(action.player.uuid()).assimRank == 0) return false;
 
             if (build != null && action.player != null && build.get(0) != null
-                    && ((CustomPlayer) build.get(0)).assimRank > players.get(action.player.uuid).assimRank
-                    && players.get(action.player.uuid).assimRank < 3 && action.type != Administration.ActionType.tapTile) {
+                    && ((CustomPlayer) build.get(0)).assimRank > players.get(action.player.uuid()).assimRank
+                    && players.get(action.player.uuid()).assimRank < 3) {
                 return false;
             }
-            if (action.player != null && teams.containsKey(action.player.getTeam()) && players.containsKey(action.player.uuid)
-            && players.get(action.player.uuid).assimRank != 4 && teams.get(action.player.getTeam()).codered){
+            if (action.player != null && teams.containsKey(action.player.team()) && players.containsKey(action.player.uuid())
+            && players.get(action.player.uuid()).assimRank != 4 && teams.get(action.player.team()).codered){
                 return false;
             }
 
             if (action.player != null
-            && action.block != null && action.block == Blocks.commandCenter && players.get(action.player.uuid).assimRank < 2){
+            && action.block != null && action.block == Blocks.commandCenter && players.get(action.player.uuid()).assimRank < 2){
                 return false;
             }
 
@@ -130,13 +128,13 @@ public class Assimilation extends Plugin{
             // A nice simple way of recording all block places and the players who placed them.
             if(event.breaking){
                 recorder.removeBuild(event.tile.x, event.tile.y);
-            }else if(event.tile.block() != null && event.player != null){
-                recorder.addBuild(event.tile.x, event.tile.y, players.get(event.player.uuid), event.tile.block());
+            }else if(event.tile.block() != null && event.unit.getPlayer() != null){
+                recorder.addBuild(event.tile.x, event.tile.y, players.get(event.unit.getPlayer().uuid()), event.tile.block());
             }
 
             for(Cell cell : cells){
                 if(cell.contains(event.tile.x, event.tile.y)){
-                    cell.updateCapture(event.tile.link(), event.breaking, event.player);
+                    cell.updateCapture(event.tile, event.breaking, event.unit.getPlayer());
                     break;
                 }
             }
@@ -147,6 +145,7 @@ public class Assimilation extends Plugin{
         });
 
         Events.on(EventType.BlockDestroyEvent.class, event ->{
+
             Cell eventCell = null; // The following statements should only use a cell if the event happened in one, so this shouldn't throw an error
             for(Cell cell : cells){
                 if(cell.contains(event.tile.x, event.tile.y)){
@@ -157,9 +156,9 @@ public class Assimilation extends Plugin{
             recorder.removeBuild(event.tile.x, event.tile.y);
 
             // Check for team elimination (when nucleus is destroyed)
-            if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() != Team.crux){
+            if(event.tile.block() == Blocks.coreNucleus && event.tile.team() != Team.crux){
                 eventCell.owner = null;
-                if(teams.containsKey(event.tile.getTeam())) assimilate(event.tile.getTeam(), event.tile.entity.lastHit);
+                if(teams.containsKey(event.tile.team())) assimilate(event.tile.team(), event.tile.build.lastHit);
             }
 
             // Check for cell destruction and clear the cell
@@ -167,13 +166,13 @@ public class Assimilation extends Plugin{
                 eventCell.clearCell();
             }
 
-            if(event.tile.block() == Blocks.coreNucleus && event.tile.getTeam() == Team.crux){
-                if(event.tile.entity.lastHit != null && teams.containsKey(event.tile.entity.lastHit)) {
-                    for (Player ply : teams.get(event.tile.entity.lastHit).players) {
-                        if (players.get(ply.uuid).connected) {
+            if(event.tile.block() == Blocks.coreNucleus && event.tile.team() == Team.crux){
+                if(event.tile.build.lastHit != null && teams.containsKey(event.tile.build.lastHit)) {
+                    for (Player ply : teams.get(event.tile.build.lastHit).players) {
+                        if (players.get(ply.uuid()).connected) {
                             int addXp = 10 * (ply.donateLevel + 1);
                             ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
-                            playerDataDB.safePut(ply.uuid,"xp", (int) playerDataDB.safeGet(ply.uuid,"xp") + addXp);
+                            playerDataDB.safePut(ply.uuid(),"xp", (int) playerDataDB.safeGet(ply.uuid(),"xp") + addXp);
                         }
                     }
                 }
@@ -186,32 +185,31 @@ public class Assimilation extends Plugin{
             }
 
             if(eventCell != null && eventCell.owner == null && !(event.tile.block() instanceof CoreBlock)){
-                eventCell.updateCapture(event.tile.link(), true, null);
+                eventCell.updateCapture(event.tile, true, null);
             }
 
         });
 
         Events.on(EventType.PlayerJoinSecondary.class, event ->{
             // Databasing stuff first:
-            if(!playerDataDB.hasRow(event.player.uuid)){
+            if(!playerDataDB.hasRow(event.player.uuid())){
                 Log.info("New player, adding to local tables...");
-                playerDataDB.addRow(event.player.uuid);
-                playerConfigDB.addRow(event.player.uuid);
+                playerDataDB.addRow(event.player.uuid());
+                playerConfigDB.addRow(event.player.uuid());
             }
 
-            playerDataDB.loadRow(event.player.uuid);
-            playerConfigDB.loadRow(event.player.uuid);
+            playerDataDB.loadRow(event.player.uuid());
+            playerConfigDB.loadRow(event.player.uuid());
 
-            if((int) playerConfigDB.safeGet(event.player.uuid,"defaultRank") == 0){
-                playerConfigDB.safePut(event.player.uuid,"defaultRank", 1);
+            if((int) playerConfigDB.safeGet(event.player.uuid(),"defaultRank") == 0){
+                playerConfigDB.safePut(event.player.uuid(),"defaultRank", 1);
             }
 
             // Determine rank
 
-            event.player.name = stringHandler.determineRank((int) playerDataDB.safeGet(event.player.uuid,"xp")) + " " + event.player.name;
-
-
-            playerDataDB.safePut(event.player.uuid,"latestName", event.player.name);
+            event.player.name = stringHandler.determineRank((int) playerDataDB.safeGet(event.player.uuid(),"xp")) + " " + event.player.name;
+            
+            playerDataDB.safePut(event.player.uuid(),"latestName", event.player.name);
 
 
             event.player.sendMessage(leaderboard(5));
@@ -220,25 +218,25 @@ public class Assimilation extends Plugin{
 
             CustomPlayer ply;
 
-            if(!players.containsKey(event.player.uuid)){
+            if(!players.containsKey(event.player.uuid())){
                 ply = new CustomPlayer(event.player, 0);
                 ply.eventCalls = event.player.donateLevel; // CHANGE THIS | why tho?
-                players.put(event.player.uuid, ply);
+                players.put(event.player.uuid(), ply);
             }else{
-                ply = players.get(event.player.uuid);
+                ply = players.get(event.player.uuid());
             }
             ply.connected = true;
 
-            if(teams.containsKey(players.get(event.player.uuid).lastTeam)){
-                event.player.setTeam(players.get(event.player.uuid).player.getTeam());
+            if(teams.containsKey(players.get(event.player.uuid()).lastTeam)){
+                event.player.team(players.get(event.player.uuid()).player.team());
 
-                AssimilationTeam oldTeam = teams.get(players.get(event.player.uuid).lastTeam);
+                AssimilationTeam oldTeam = teams.get(players.get(event.player.uuid()).lastTeam);
 
                 // Remove old player object and replace with new one
-                oldTeam.players.removeIf(player -> player.uuid.equals(event.player.uuid));
+                oldTeam.players.removeIf(player -> player.uuid().equals(event.player.uuid()));
                 oldTeam.players.add(event.player);
 
-                if(oldTeam.commander.uuid.equals(event.player.uuid)){
+                if(oldTeam.commander.uuid().equals(event.player.uuid())){
                     oldTeam.commander = event.player;
                 }
                 return;
@@ -254,14 +252,14 @@ public class Assimilation extends Plugin{
 
             // Get new team
             teamCount ++;
-            event.player.setTeam(Team.all()[teamCount+6]);
+            event.player.team(Team.all[teamCount+6]);
 
             // Create custom team and add it to the teams hash map
-            AssimilationTeam cTeam = new AssimilationTeam(event.player, (int) playerConfigDB.safeGet(event.player.uuid,"defaultRank"));
-            teams.put(event.player.getTeam(), cTeam);
+            AssimilationTeam cTeam = new AssimilationTeam(event.player, (int) playerConfigDB.safeGet(event.player.uuid(),"defaultRank"));
+            teams.put(event.player.team(), cTeam);
             // Add player to the custom team
             cTeam.addPlayer(event.player);
-            ply.lastTeam = event.player.getTeam();
+            ply.lastTeam = event.player.team();
 
 
             // Determine next free cell randomly
@@ -276,19 +274,17 @@ public class Assimilation extends Plugin{
 
             cTeam.capturedCells.add(cell);
             cTeam.homeCell = cell;
-            cell.owner = event.player.getTeam();
+            cell.owner = event.player.team();
 
-            cell.makeNexus(players.get(event.player.uuid), false);
+            cell.makeNexus(players.get(event.player.uuid()), false);
 
         });
 
         Events.on(EventType.UnitDestroyEvent.class, event ->{
-            if(event.unit instanceof Player && players.get(((Player) event.unit).uuid).assimRank == 0){
-                ((Player) event.unit).mech = Mechs.alpha;
-            }
-            if(!(event.unit instanceof Player) && zombieActive && event.unit.getTeam() != Team.crux && !event.unit.getTypeID().name.equals("lich") && !event.unit.getTypeID().name.equals("crawler")){
-                UnitType unit = Vars.content.units().find(unitType -> unitType.name.equals(event.unit.getTypeID().name));
-                BaseUnit baseUnit = unit.create(Team.crux);
+
+            if(event.unit.getPlayer() == null && zombieActive && event.unit.team() != Team.crux && !event.unit.type().name.equals("zenith") && !event.unit.type().name.equals("crawler")){
+                UnitType unit = Vars.content.units().find(unitType -> unitType.name.equals(event.unit.type().name));
+                Unit baseUnit = unit.create(Team.crux);
                 baseUnit.set(event.unit.x, event.unit.y);
                 baseUnit.add();
             }
@@ -296,18 +292,18 @@ public class Assimilation extends Plugin{
 
         });
 
-        Events.on(EventType.PlayerSpawn.class, event ->{
-            if(players.get(event.player.uuid).assimRank == 0){
+        /*Events.on(EventType.PlayerSpawn.class, event ->{
+            if(players.get(event.player.uuid()).assimRank == 0){
                 event.player.mech = Mechs.alpha;
             }else if(event.player.mech == Mechs.alpha){
                 event.player.mech = Mechs.dart;
                 event.player.sendMessage("Only bots can become an Alpha");
             }
-        });
+        });*/
 
         Events.on(EventType.PlayerLeave.class, event ->{
-            savePlayerData(event.player.uuid);
-            players.get(event.player.uuid).connected = false;
+            savePlayerData(event.player.uuid());
+            players.get(event.player.uuid()).connected = false;
         });
 
 
@@ -337,9 +333,12 @@ public class Assimilation extends Plugin{
             if(generation < 0.25f){
                 cellSpawn = Schematics.readBase64("bXNjaAB4nE2RWw6CMBBFp3TaGRK34gJcjSGkH75KohK3ryA9ykc5tKe3DVd66YNoHW5F+lcZLsdxupdO/DzX8XmaquyWiX2dx2uZHyJykPZ0yxAYfp8RUihBGTLINwokB6LCN3mlCCmUoAwZ5P+XXV/ddsqSoawaq21HZEds9/qQMdc8xVM8xVO8hJfwEl7Cy3gZL+NlPMMzPKMFowWjBaMFowWjBSPZ+QFOC04LTgtOC04LTgtOC74lvgFcRBAe");
                 rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 1000, Items.metaglass, 200, Items.silicon, 1500, Items.titanium, 500);
-                rules.bannedBlocks.addAll(Blocks.crawlerFactory, Blocks.daggerFactory, Blocks.titanFactory, Blocks.fortressFactory);
             }
-            world.loadGenerator(generator);
+
+            world.loadGenerator(516, 516, generator::generate);
+            world.beginMapLoad();
+            ArenaGenerator.defaultOres(world.tiles);
+            world.endMapLoad();
             Log.info("Map generated.");
 
             // Create cells objects
@@ -355,7 +354,7 @@ public class Assimilation extends Plugin{
                 c.owner = Team.crux;
                 c.makeNexus(null, true);
                 cells.add(c);
-                if(c.x == 39 || c.x == 448 || c.y == 39 || c.y == 478){
+                if((c.x == 39 || c.x == 448 || c.y == 39 || c.y == 478) && !(c.x == 39 && c.y == 39) && !(c.x == 448 && c.y == 478)){
                     priorityCells.add(c);
                 }else{
                     freeCells.add(c);
@@ -412,8 +411,8 @@ public class Assimilation extends Plugin{
             if (args.length == 0) {
                 String s = "[accent]Use [orange]/rerank [player/id] [rank][accent] to re-rank a player to [scarlet]0[accent]: Bot, [scarlet]1[accent]: Drone, [scarlet]2[accent]: Private or [scarlet]3[accent]: Captain\n\n";
                 s += "You are able to rerank the following players:";
-                for (Player ply : Vars.playerGroup) {
-                    if (ply != player && player.getTeam() == players.get(ply.uuid).lastTeam) {
+                for (Player ply : Groups.player) {
+                    if (ply != player && player.team() == players.get(ply.uuid()).lastTeam) {
                         s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
                     }
                 }
@@ -425,26 +424,26 @@ public class Assimilation extends Plugin{
                 return;
             }
 
-            if (players.get(player.uuid).assimRank != 4) {
+            if (players.get(player.uuid()).assimRank != 4) {
                 player.sendMessage("[accent]You can only re-rank players if you are a Commander!\n");
                 return;
             }
             boolean wasID = true;
             Player other;
             try {
-                other = Vars.playerGroup.getByID(Integer.parseInt(args[0]));
+                other = Groups.player.getByID(Integer.parseInt(args[0]));
             } catch (NumberFormatException e) {
                 other = null;
             }
 
             if (other == null) {
                 wasID = false;
-                other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
+                other = Groups.player.find(p -> p.name.equalsIgnoreCase(args[0]));
                 if (other == null) {
                     String s = "[accent]No player by name [white]" + args[0] + "[accent] or id [white]" + args[0] + "[accent].\n";
                     s += "You are able to rerank the following players:";
-                    for (Player ply : Vars.playerGroup) {
-                        if (ply != player && player.getTeam() == players.get(ply.uuid).lastTeam) {
+                    for (Player ply : Groups.player) {
+                        if (ply != player && player.team() == players.get(ply.uuid()).lastTeam) {
                             s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id;
                         }
                     }
@@ -456,7 +455,7 @@ public class Assimilation extends Plugin{
                 player.sendMessage("[accent]Can not re-rank yourself!");
                 return;
             }
-            if (other.getTeam() != player.getTeam()) {
+            if (other.team() != player.team()) {
                 player.sendMessage("[accent]Can not re-rank players outside of your team!");
                 return;
             }
@@ -473,8 +472,8 @@ public class Assimilation extends Plugin{
                 return;
             }
 
-            teams.get(player.getTeam()).rank(players.get(other.uuid), newRank);
-            other.kill();
+            teams.get(player.team()).rank(players.get(other.uuid()), newRank);
+            other.clearUnit();
             String s1 = "[accent]Successfully re-ranked " + (wasID ? "ID: " : "Player: ") + "[white]" + args[0] + "[accent] to rank: [white]";
             String s2 = "[accent]" + player.name + "[accent] has re-ranked you to [white]";
             String append = "";
@@ -513,8 +512,8 @@ public class Assimilation extends Plugin{
             String privates = "[accent]Privates:";
             String drones = "[accent]Drones:";
             String bots = "[accent]Bots:";
-            for (Player ply : teams.get(players.get(player.uuid).lastTeam).players) {
-                CustomPlayer cPly = players.get(ply.uuid);
+            for (Player ply : teams.get(players.get(player.uuid()).lastTeam).players) {
+                CustomPlayer cPly = players.get(ply.uuid());
                 switch(cPly.assimRank){
                     case 0: bots += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
                     case 1: drones += "\n [gold]- [accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id; break;
@@ -544,15 +543,15 @@ public class Assimilation extends Plugin{
                 return;
             }
 
-            playerConfigDB.safePut(player.uuid,"defaultRank", dRank);
-            if(players.get(player.uuid).assimRank == 4) teams.get(player.getTeam()).defaultRank = dRank;
+            playerConfigDB.safePut(player.uuid(),"defaultRank", dRank);
+            if(players.get(player.uuid()).assimRank == 4) teams.get(player.team()).defaultRank = dRank;
             player.sendMessage("[accent]Successfully updated default rank to [scarlet]" + dRank);
 
         });
 
         handler.<Player>register("c", "Lock building for all except commander", (args, player) ->{
-            AssimilationTeam team = teams.get(player.getTeam());
-            if (players.get(player.uuid).assimRank != 4) {
+            AssimilationTeam team = teams.get(player.team());
+            if (players.get(player.uuid()).assimRank != 4) {
                 player.sendMessage("[accent]You can only call a code red if you are a Commander!");
                 return;
             }
@@ -581,7 +580,7 @@ public class Assimilation extends Plugin{
             player.sendMessage("[accent]Code red called. Everyone but you on your team is build locked for the next minute.");
 
             for(Player ply : team.players){
-                if(players.get(ply.uuid).connected && ply != player){
+                if(players.get(ply.uuid()).connected && ply != player){
                     ply.sendMessage(player.name + "[accent] called a code red. You cannot build for the next minute.");
                 }
             }
@@ -589,23 +588,23 @@ public class Assimilation extends Plugin{
 
         });
 
-        handler.<Player>register("respawn", "Respawn (for when you cant when you join)", (args, player) ->{
+        /*handler.<Player>register("respawn", "Respawn (for when you cant when you join)", (args, player) ->{
             if(!player.dead){
                 player.sendMessage("[accent]Can only use /respawn if you are dead!");
                 return;
             }
             player.kill();
-            player.beginRespawning((SpawnerTrait) teams.get(player.getTeam()).homeCell.myCore.entity);
-        });
+            player.beginRespawning((SpawnerTrait) teams.get(player.team()).homeCell.myCore.entity);
+        });*/
 
         handler.<Player>register("xp", "Show your xp", (args, player) ->{
-            int xp = (int) playerDataDB.safeGet(player.uuid,"xp");
+            int xp = (int) playerDataDB.safeGet(player.uuid(),"xp");
             String nextRank = stringHandler.determineRank(xp+15000);
             player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/15000+1)*15000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
         });
 
         handler.<Player>register("wins", "Show your wins", (args, player) ->{
-            int wins = (int) playerDataDB.safeGet(player.uuid,"monthWins");
+            int wins = (int) playerDataDB.safeGet(player.uuid(),"monthWins");
             player.sendMessage("[scarlet]" + wins + "[accent] wins.");
         });
 
@@ -631,14 +630,14 @@ public class Assimilation extends Plugin{
         handler.<Player>register("join", "[player/id]", "[sky]Assimilate into another players team (donator only)", (args, player) -> {
 
 
-            AssimilationTeam thisTeam = teams.get(player.getTeam());
+            AssimilationTeam thisTeam = teams.get(player.team());
 
             if (args.length == 0) {
                 String s = "[accent]Use [orange]/join [player/id][accent] to join a players team.\n";
                 s += "You are able to join the following players:";
-                for (Player ply : Vars.playerGroup) {
-                    if(teams.get(ply.getTeam()) != thisTeam) {
-                        s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id + ", Team: " + teams.get(ply.getTeam()).team.name;
+                for (Player ply : Groups.player) {
+                    if(teams.get(ply.team()) != thisTeam) {
+                        s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id + ", Team: " + teams.get(ply.team()).team.name;
                     }
                 }
                 player.sendMessage(s);
@@ -652,19 +651,19 @@ public class Assimilation extends Plugin{
 
             Player other;
             try {
-                other = Vars.playerGroup.getByID(Integer.parseInt(args[0]));
+                other = Groups.player.getByID(Integer.parseInt(args[0]));
             } catch (NumberFormatException e) {
                 other = null;
             }
 
             if (other == null) {
-                other = Vars.playerGroup.find(p -> p.name.equalsIgnoreCase(args[0]));
+                other = Groups.player.find(p -> p.name.equalsIgnoreCase(args[0]));
                 if (other == null) {
                     String s = "[accent]No player by name [white]" + args[0] + "[accent] or id [white]" + args[0] + "[accent].\n";
                     s += "You are able to join the following players:";
-                    for (Player ply : Vars.playerGroup) {
-                        if(teams.get(ply.getTeam()) != thisTeam) {
-                            s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id + ", Team: " + teams.get(ply.getTeam()).team.name;
+                    for (Player ply : Groups.player) {
+                        if(teams.get(ply.team()) != thisTeam) {
+                            s += "\n[accent]Name: [white]" + ply.name + "[accent], ID: [white]" + ply.id + ", Team: " + teams.get(ply.team()).team.name;
                         }
                     }
                     player.sendMessage(s);
@@ -672,24 +671,24 @@ public class Assimilation extends Plugin{
                 }
             }
 
-            if(other.getTeam().id == player.getTeam().id){
+            if(other.team().id == player.team().id){
                 player.sendMessage(other.name + "[accent] is on the same team as you!");
                 return;
             }
 
-            if(players.get(player.uuid).joinsLeft < 1){
+            if(players.get(player.uuid()).joinsLeft < 1){
                 player.sendMessage("You have joined the maximum number of teams this round!");
                 return;
             }
 
-            if(players.get(player.uuid).assimRank == 4){
-                assimilate(player.getTeam(), other.getTeam());
+            if(players.get(player.uuid()).assimRank == 4){
+                assimilate(player.team(), other.team());
             }else{
-                teams.get(player.getTeam()).players.remove(player);
-                addPlayerTeam(player, teams.get(other.getTeam()));
+                teams.get(player.team()).players.remove(player);
+                addPlayerTeam(player, teams.get(other.team()));
             }
 
-            players.get(player.uuid).joinsLeft -= 1;
+            players.get(player.uuid()).joinsLeft -= 1;
 
             player.sendMessage("[accent]Adding you to [white]" + other.name + "[accent]'s team...");
 
@@ -700,7 +699,7 @@ public class Assimilation extends Plugin{
 
             if(args.length == 0){
                 player.sendMessage("[accent]You can call the following events:\n\n" +
-                        "[gold]1 [accent]- Lich\n" +
+                        "[gold]1 [accent]- Spooky\n" +
                         "[gold]2 [accent]- Instant build\n" +
                         "[gold]3 [accent]- Zombies");
                 return;
@@ -709,7 +708,7 @@ public class Assimilation extends Plugin{
                 player.sendMessage("[accent]Only donators have access to this command");
                 return;
             }
-            if(players.get(player.uuid).eventCalls < 1){
+            if(players.get(player.uuid()).eventCalls < 1){
                 player.sendMessage("[accent]You have run out of event calls!");
                 return;
             }
@@ -721,27 +720,28 @@ public class Assimilation extends Plugin{
 
             switch(args[0]){
                 case "1":
-                    player.sendMessage("[accent]Temporarily disabled...");
-                    return;
-                    /*Call.sendMessage(player.name + "[accent] has called a [gold]Lich[accent] event! It begins in [scarlet]30 [accent]seconds!");
-                    AssimilationEvent lichEvent = new LichEvent(60f * 30f, 60f * 45f, this, teams);
-                    players.get(player.uuid).eventCalls -=1;
-                    lichEvent.execute();
-                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
-                    break;*/
+                    Call.sendMessage(player.name + "[accent] has called a [gold]Spooky[accent] event! It begins in [scarlet]30 [accent]seconds!");
+                    AssimilationEvent lightEvent = new LightEvent(60f * 30f, 60f * 300f, this, rules);
+                    players.get(player.uuid()).eventCalls -=1;
+                    lightEvent.execute();
+                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid()).eventCalls + "[accent] event calls left");
+                    break;
                 case "2":
                     Call.sendMessage(player.name + "[accent] has called an [gold]Instant build[accent] event! It begins in [scarlet]30 [accent]seconds!");
                     AssimilationEvent buildEvent = new InstantBuildEvent(60f * 30f, 60f * 300f, this, rules);
-                    players.get(player.uuid).eventCalls -=1;
+                    players.get(player.uuid()).eventCalls -=1;
                     buildEvent.execute();
-                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
+                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid()).eventCalls + "[accent] event calls left");
                     break;
                 case "3":
                     Call.sendMessage(player.name + "[accent] has called a [gold]Zombie[accent] event! It begins in [scarlet]30 [accent]seconds!");
                     AssimilationEvent zombieEvent = new ZombieEvent(60f * 30f, 60f * 120f, this);
-                    players.get(player.uuid).eventCalls -=1;
+                    players.get(player.uuid()).eventCalls -=1;
                     zombieEvent.execute();
-                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid).eventCalls + "[accent] event calls left");
+                    player.sendMessage("[accent]You now have [scarlet]" + players.get(player.uuid()).eventCalls + "[accent] event calls left");
+                    break;
+                default:
+                    Call.sendMessage("[accent]No such event!");
                     break;
 
             }
@@ -751,37 +751,13 @@ public class Assimilation extends Plugin{
 
     void initRules(){
 
-        // This ensures only the alpha mech has any attack damage
-        Weapon useless = new Weapon("prettyShitNGL"){{
-            length = 1.5f;
-            reload = 14f;
-            shots = 0; // get rekt
-            alternate = true;
-            ejectEffect = Fx.shellEjectSmall;
-            bullet = Bullets.standardMechSmall;
-        }};
-
         cellSpawn = Schematics.readBase64("bXNjaAB4nE2QywqDMBAAd5NNomA/xUtv/ZoiVqjgA7TS3299TeshTnQcNkouuYoNVd/IpZrntr+/q65rHlcnxes5Tu3Sl+sTKepxasphqbtmmUXkJufl1kVZflsPGRSgCCUoO0gpK1GlrJSVslJWyrqXt032P+x2c0d5bRhvz1kcs3i+8MziKXvKhmd4hmd4AS/gBbyAF/EiXsSLeAkv8dvTfs6NPGRQgCKU6J3l7DzilxRykIcMClCEErQXP30oExg=");
 
-        Mechs.dart.weapon = useless;
-        Mechs.dart.health *= 10;
-        Mechs.delta.weapon = useless;
-        Mechs.delta.health *= 10;
-        Mechs.glaive.weapon = useless;
-        Mechs.glaive.health *= 10;
-        Mechs.javelin.weapon = useless;
-        Mechs.javelin.health *= 10;
-        Mechs.omega.weapon = useless;
-        Mechs.omega.health *= 10;
-        Mechs.tau.weapon = useless;
-        Mechs.tau.health *= 10;
-        Mechs.trident.weapon = useless;
-        Mechs.trident.health *= 10;
-
-        Mechs.alpha.health  *= 5;
+        UnitTypes.alpha.weapons = new Seq<>();
+        UnitTypes.beta.weapons = new Seq<>();
+        UnitTypes.gamma.weapons = new Seq<>();
 
         // Modify lancer laser
-
         Block lancer = Vars.content.blocks().find(new Boolf<Block>() {
             @Override
             public boolean get(Block block) {
@@ -791,9 +767,7 @@ public class Assimilation extends Plugin{
 
         BulletType newLancerLaser = AssimilationData.getLLaser();
 
-        ((ChargeTurret)(lancer)).shootType = newLancerLaser;
-
-        UnitTypes.draug.health *= 100;
+        ((PowerTurret)(lancer)).shootType = newLancerLaser;
 
         for(Block b : content.blocks()){
             b.health *= 10;
@@ -801,11 +775,9 @@ public class Assimilation extends Plugin{
 
         rules.canGameOver = false;
         rules.unitDamageMultiplier = 10;
-        rules.playerDamageMultiplier = 1;
-        rules.playerHealthMultiplier = 1;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.deltaPad, Blocks.phaseWall, Blocks.phaseWallLarge);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.phaseWall, Blocks.phaseWallLarge);
         rules.buildSpeedMultiplier = 2;
     }
 
@@ -825,21 +797,21 @@ public class Assimilation extends Plugin{
         Call.sendMessage("[accent]" + newAssimilationTeam.name + "[accent]'s team has [scarlet]A S S I M I L A T E D [accent]" + oldAssimilationTeam.name + "[accent]'s team!");
         // Add XP to players in the team that did the assimilating
         for(Player ply : newAssimilationTeam.players){
-            if(players.get(ply.uuid).connected) {
+            if(players.get(ply.uuid()).connected) {
                 int addXp = 100*(ply.donateLevel+1);
                 ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for assimilating " + oldAssimilationTeam.name + "[accent]'s team!");
-                playerDataDB.safePut(ply.uuid,"xp", (int) playerDataDB.safeGet(ply.uuid,"xp") + addXp);
+                playerDataDB.safePut(ply.uuid(),"xp", (int) playerDataDB.safeGet(ply.uuid(),"xp") + addXp);
             }
         }
 
         for(Player ply : oldAssimilationTeam.players){
-            if(players.get(newAssimilationTeam.commander.uuid).connected){
+            if(players.get(newAssimilationTeam.commander.uuid()).connected){
                 int addXp = 100*(newAssimilationTeam.commander.donateLevel+1);
                 newAssimilationTeam.commander.sendMessage("[accent]+[scarlet]"+ addXp+ "xp[accent] for assimilating " + ply.name);
-                playerDataDB.safePut(newAssimilationTeam.commander.uuid,"xp", (int) playerDataDB.safeGet(newAssimilationTeam.commander.uuid,"xp") + addXp);
+                playerDataDB.safePut(newAssimilationTeam.commander.uuid(),"xp", (int) playerDataDB.safeGet(newAssimilationTeam.commander.uuid(),"xp") + addXp);
             }
 
-            Log.info("Switching uuid: " + ply.uuid + " to team " + newTeam.name);
+            Log.info("Switching uuid: " + ply.uuid() + " to team " + newTeam.name);
             addPlayerTeam(ply, newAssimilationTeam);
         }
 
@@ -869,17 +841,14 @@ public class Assimilation extends Plugin{
     }
 
     void addPlayerTeam(Player player, AssimilationTeam newTeam){
-        CustomPlayer cPly = players.get(player.uuid);
-        player.setTeam(newTeam.team);
-        players.get(player.uuid).lastTeam = newTeam.team;
+        CustomPlayer cPly = players.get(player.uuid());
+        player.team(newTeam.team);
+        players.get(player.uuid()).lastTeam = newTeam.team;
         newTeam.addPlayer(player);
         int dRank = newTeam.defaultRank;
         if(cPly.assimRank > dRank){
             cPly.assimRank = dRank;
         }
-        player.lastSpawner = null;
-        player.kill();
-        player.lastSpawner = newTeam.team.core();
 
     }
 
@@ -887,8 +856,8 @@ public class Assimilation extends Plugin{
         for(int x = 0; x < world.width(); x++){
             for(int y = 0; y < world.height(); y++){
                 Tile tile = world.tile(x, y);
-                if(tile.entity != null && tile.getTeam() == team){
-                    Time.run(Mathf.random(60f * 6), tile.entity::kill);
+                if(tile.build != null && tile.team() == team){
+                    Time.run(Mathf.random(60f * 6), tile.build::kill);
                 }
             }
         }
@@ -903,6 +872,7 @@ public class Assimilation extends Plugin{
                 i ++;
                 s += "\n[gold]" + (i) + "[white]:" + rs.getString("latestName") + "[accent]: [gold]" + rs.getString("monthWins") + "[accent] wins";
             }
+            rs.close();
         } catch (SQLException throwables) {
             throwables.printStackTrace();
         }
@@ -910,8 +880,8 @@ public class Assimilation extends Plugin{
     }
 
     void endgame(String winner){
-        Call.onInfoMessage(winner + "[accent]'s team has conquered the planet! Loading the next world...");
-        String winPlayer = teams.get(teams.keySet().toArray()[0]).commander.uuid;
+        Call.infoMessage(winner + "[accent]'s team has conquered the planet! Loading the next world...");
+        String winPlayer = teams.get(teams.keySet().toArray()[0]).commander.uuid();
         CustomPlayer ply = players.get(winPlayer);
         if(!playerDataDB.entries.containsKey(winPlayer)){
             playerDataDB.loadRow(winPlayer);
@@ -920,8 +890,8 @@ public class Assimilation extends Plugin{
         playerDataDB.safePut(winPlayer, "monthWins", (int) playerDataDB.safeGet(winPlayer, "monthWins") + 1);
         playerDataDB.safePut(winPlayer, "allWins", (int) playerDataDB.safeGet(winPlayer, "allWins") + 1);
         playerDataDB.safePut(winPlayer, "xp", (int) playerDataDB.safeGet(winPlayer, "xp") + 500);
-        for(Player player: playerGroup.all()){
-            if(player.uuid.equals(winPlayer)){
+        for(Player player: Groups.player){
+            if(player.uuid().equals(winPlayer)){
                 player.sendMessage("[accent]+[scarlet]500xp[accent] for winning");
             }
         }
@@ -929,8 +899,8 @@ public class Assimilation extends Plugin{
 
         Time.runTask(60f * 10f, () -> {
 
-            for(Player player : playerGroup.all()) {
-                Call.onConnect(player.con, "aamindustry.play.ai", 6567);
+            for(Player player : Groups.player) {
+                Call.connect(player.con, "aamindustry.play.ai", 6567);
             }
 
             // in case any was missed (give a delay so players all leave)

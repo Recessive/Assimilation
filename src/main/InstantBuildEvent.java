@@ -1,9 +1,8 @@
-package assimilation;
+package main;
 
 import arc.util.Time;
 import mindustry.Vars;
 import mindustry.content.UnitTypes;
-import mindustry.entities.type.BaseUnit;
 import mindustry.game.Rules;
 import mindustry.game.Team;
 import mindustry.gen.Call;
@@ -29,14 +28,14 @@ public class InstantBuildEvent extends AssimilationEvent{
 
             rules.buildSpeedMultiplier = 100;
             Vars.state.rules = rules.copy();
-            Call.onSetRules(rules);
+            Call.setRules(rules);
 
             Time.runTask(timeFrame, () -> {
                 game.eventActive = false;
                 Call.sendMessage("[gold]Instant build [accent]event is over!");
                 rules.buildSpeedMultiplier = 2;
                 Vars.state.rules = rules.copy();
-                Call.onSetRules(rules);
+                Call.setRules(rules);
             });
         });
     }
