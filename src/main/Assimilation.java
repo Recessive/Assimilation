@@ -90,7 +90,7 @@ public class Assimilation extends Plugin {
         Rank youtuber = new Rank("[#4d004d]{[scarlet]You[gray]tuber} [sky]", 0);
 
         netServer.admins.addActionFilter((action) -> {
-            if(action.type == Administration.ActionType.control) return false;
+            if(action.type == Administration.ActionType.control || action.type == Administration.ActionType.command) return false;
             if(action.tile == null) return true;
             Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
             if(action.player != null && players.get(action.player.uuid()).assimRank == 0) return false;
