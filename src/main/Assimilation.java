@@ -90,6 +90,7 @@ public class Assimilation extends Plugin {
         Rank youtuber = new Rank("[#4d004d]{[scarlet]You[gray]tuber} [sky]", 0);
 
         netServer.admins.addActionFilter((action) -> {
+            if(action.type == Administration.ActionType.control) return false;
             if(action.tile == null) return true;
             Tuple<CustomPlayer, Block> build = recorder.getBuild(action.tile.x, action.tile.y);
             if(action.player != null && players.get(action.player.uuid()).assimRank == 0) return false;
@@ -820,6 +821,7 @@ public class Assimilation extends Plugin {
 
 
         killTiles(oldTeam);
+        killUnits(oldTeam);
 
         if(teams.keySet().size() == 1 && Team.crux.cores().size == 0){
             endgame(teams.get(teams.keySet().toArray()[0]).name);
@@ -859,6 +861,14 @@ public class Assimilation extends Plugin {
                 if(tile.build != null && tile.team() == team){
                     Time.run(Mathf.random(60f * 6), tile.build::kill);
                 }
+            }
+        }
+    }
+
+    void killUnits(Team team){
+        for(Unit u : Groups.unit){
+            if(u.team == team){
+                u.kill();
             }
         }
     }
