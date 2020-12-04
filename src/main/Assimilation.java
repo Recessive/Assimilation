@@ -778,7 +778,9 @@ public class Assimilation extends Plugin {
         rules.unitDamageMultiplier = 10;
         rules.enemyCoreBuildRadius = (cellRadius-2) * 8;
         rules.loadout = ItemStack.list(Items.copper, 2000, Items.lead, 1000, Items.graphite, 200, Items.metaglass, 200, Items.silicon, 400);
-        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.phaseWall, Blocks.phaseWallLarge);
+        rules.bannedBlocks.addAll(Blocks.hail, Blocks.ripple, Blocks.phaseWall, Blocks.phaseWallLarge,
+                Blocks.microProcessor, Blocks.logicProcessor, Blocks.hyperProcessor, Blocks.logicDisplay,
+                Blocks.largeLogicDisplay, Blocks.memoryBank, Blocks.memoryCell);
         rules.buildSpeedMultiplier = 2;
     }
 
