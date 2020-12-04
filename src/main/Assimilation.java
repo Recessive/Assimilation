@@ -782,6 +782,8 @@ public class Assimilation extends Plugin {
                 Blocks.microProcessor, Blocks.logicProcessor, Blocks.hyperProcessor, Blocks.logicDisplay,
                 Blocks.largeLogicDisplay, Blocks.memoryBank, Blocks.memoryCell);
         rules.buildSpeedMultiplier = 2;
+        rules.fire = false;
+
     }
 
     void assimilate(Team oldTeam, Team newTeam){
