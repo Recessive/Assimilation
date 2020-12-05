@@ -69,8 +69,8 @@ public class Assimilation extends Plugin {
 
     private BuildRecorder recorder = new BuildRecorder();
 
-    private DBInterface playerDataDB = new DBInterface("player_data");
-    private DBInterface playerConfigDB = new DBInterface("player_config");
+    private DBInterface playerDataDB = new DBInterface("player_data", true);
+    private DBInterface playerConfigDB = new DBInterface("player_config", true);
 
 
 
@@ -79,7 +79,7 @@ public class Assimilation extends Plugin {
     //register event handlers and create variables in the constructor
     public void init(){
 
-        playerDataDB.connect("data/server_data.db");
+        playerDataDB.connect("../network-files/assimilation_data.db");
         playerConfigDB.connect(playerDataDB.conn);
 
         initRules();
@@ -173,7 +173,7 @@ public class Assimilation extends Plugin {
                         if (players.get(ply.uuid()).connected) {
                             int addXp = 10 * (ply.donateLevel + 1);
                             ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for clearing a crux a cell");
-                            playerDataDB.safePut(ply.uuid(),"xp", (int) playerDataDB.safeGet(ply.uuid(),"xp") + addXp);
+                            players.get(ply.uuid()).xp += addXp;
                         }
                     }
                 }
@@ -222,6 +222,8 @@ public class Assimilation extends Plugin {
             if(!players.containsKey(event.player.uuid())){
                 ply = new CustomPlayer(event.player, 0);
                 ply.eventCalls = event.player.donateLevel; // CHANGE THIS | why tho?
+                ply.xp = (int) playerDataDB.safeGet(event.player.uuid(),"xp");
+                ply.wins = (int) playerDataDB.safeGet(event.player.uuid(),"monthWins");
                 players.put(event.player.uuid(), ply);
             }else{
                 ply = players.get(event.player.uuid());
@@ -256,7 +258,8 @@ public class Assimilation extends Plugin {
             event.player.team(Team.all[teamCount+6]);
 
             // Create custom team and add it to the teams hash map
-            AssimilationTeam cTeam = new AssimilationTeam(event.player, (int) playerConfigDB.safeGet(event.player.uuid(),"defaultRank"));
+            ply.dRank = (int) playerConfigDB.safeGet(event.player.uuid(),"defaultRank");
+            AssimilationTeam cTeam = new AssimilationTeam(event.player, ply.dRank);
             teams.put(event.player.team(), cTeam);
             // Add player to the custom team
             cTeam.addPlayer(event.player);
@@ -278,6 +281,9 @@ public class Assimilation extends Plugin {
             cell.owner = event.player.team();
 
             cell.makeNexus(players.get(event.player.uuid()), false);
+
+            playerConfigDB.saveRow(event.player.uuid());
+            playerDataDB.saveRow(event.player.uuid());
 
         });
 
@@ -312,7 +318,7 @@ public class Assimilation extends Plugin {
            if(event.value instanceof String[] && ((String[]) event.value)[0].equals("newName")){
                String[] val = (String[]) event.value;
                Player ply = players.get(val[1]).player;
-               ply.name = stringHandler.determineRank((int) playerDataDB.safeGet(val[1],"xp")) + " " + ply.name;
+               ply.name = stringHandler.determineRank(players.get(val[1]).xp) + " " + ply.name;
            }
         });
 
@@ -381,13 +387,9 @@ public class Assimilation extends Plugin {
                 return;
             }
 
-            if(!playerDataDB.entries.containsKey(args[0])){
-                playerDataDB.loadRow(args[0]);
-                playerDataDB.safePut(args[0],"xp", newXp);
-                playerDataDB.saveRow(args[0]);
-            }else{
-                playerDataDB.safePut(args[0],"xp", newXp);
-            }
+            playerDataDB.loadRow(args[0]);
+            playerDataDB.safePut(args[0],"xp", newXp);
+            playerDataDB.saveRow(args[0]);
             Log.info("Set uuid " + args[0] + " to have xp of " + args[1]);
 
         });
@@ -544,7 +546,7 @@ public class Assimilation extends Plugin {
                 return;
             }
 
-            playerConfigDB.safePut(player.uuid(),"defaultRank", dRank);
+            players.get(player.uuid()).dRank = dRank;
             if(players.get(player.uuid()).assimRank == 4) teams.get(player.team()).defaultRank = dRank;
             player.sendMessage("[accent]Successfully updated default rank to [scarlet]" + dRank);
 
@@ -599,13 +601,13 @@ public class Assimilation extends Plugin {
         });*/
 
         handler.<Player>register("xp", "Show your xp", (args, player) ->{
-            int xp = (int) playerDataDB.safeGet(player.uuid(),"xp");
+            int xp = players.get(player.uuid()).xp;
             String nextRank = stringHandler.determineRank(xp+15000);
             player.sendMessage("[scarlet]" + xp + "[accent] xp\nReach [scarlet]" + (xp/15000+1)*15000 + "[accent] xp to reach " + nextRank + "[accent] rank.");
         });
 
         handler.<Player>register("wins", "Show your wins", (args, player) ->{
-            int wins = (int) playerDataDB.safeGet(player.uuid(),"monthWins");
+            int wins = players.get(player.uuid()).wins;
             player.sendMessage("[scarlet]" + wins + "[accent] wins.");
         });
 
@@ -805,7 +807,7 @@ public class Assimilation extends Plugin {
             if(players.get(ply.uuid()).connected) {
                 int addXp = 100*(ply.donateLevel+1);
                 ply.sendMessage("[accent]+[scarlet]" + addXp + "xp[accent] for assimilating " + oldAssimilationTeam.name + "[accent]'s team!");
-                playerDataDB.safePut(ply.uuid(),"xp", (int) playerDataDB.safeGet(ply.uuid(),"xp") + addXp);
+                players.get(ply.uuid()).xp += addXp;
             }
         }
 
@@ -813,7 +815,7 @@ public class Assimilation extends Plugin {
             if(players.get(newAssimilationTeam.commander.uuid()).connected){
                 int addXp = 100*(newAssimilationTeam.commander.donateLevel+1);
                 newAssimilationTeam.commander.sendMessage("[accent]+[scarlet]"+ addXp+ "xp[accent] for assimilating " + ply.name);
-                playerDataDB.safePut(newAssimilationTeam.commander.uuid(),"xp", (int) playerDataDB.safeGet(newAssimilationTeam.commander.uuid(),"xp") + addXp);
+                players.get(newAssimilationTeam.commander.uuid()).xp += addXp;
             }
 
             Log.info("Switching uuid: " + ply.uuid() + " to team " + newTeam.name);
@@ -897,13 +899,13 @@ public class Assimilation extends Plugin {
         Call.infoMessage(winner + "[accent]'s team has conquered the planet! Loading the next world...");
         String winPlayer = teams.get(teams.keySet().toArray()[0]).commander.uuid();
         CustomPlayer ply = players.get(winPlayer);
-        if(!playerDataDB.entries.containsKey(winPlayer)){
-            playerDataDB.loadRow(winPlayer);
-            playerConfigDB.loadRow(winPlayer);
-        }
+        playerDataDB.loadRow(winPlayer);
         playerDataDB.safePut(winPlayer, "monthWins", (int) playerDataDB.safeGet(winPlayer, "monthWins") + 1);
         playerDataDB.safePut(winPlayer, "allWins", (int) playerDataDB.safeGet(winPlayer, "allWins") + 1);
-        playerDataDB.safePut(winPlayer, "xp", (int) playerDataDB.safeGet(winPlayer, "xp") + 500);
+        playerDataDB.saveRow(winPlayer);
+
+        players.get(winPlayer).xp += 500;
+        players.get(winPlayer).wins += 1;
         for(Player player: Groups.player){
             if(player.uuid().equals(winPlayer)){
                 player.sendMessage("[accent]+[scarlet]500xp[accent] for winning");
@@ -935,17 +937,12 @@ public class Assimilation extends Plugin {
     }
 
     void savePlayerData(String uuid){
-        if(!playerDataDB.entries.containsKey(uuid)){
-            if(players.containsKey(uuid)){
-                Log.info(uuid + " data already saved!");
-            }else{
-                Log.info(uuid + " does not exist in player object or data!");
-            }
-
-            return;
-        }
-        Log.info("Saving " + uuid + " data...");
+        Log.info("ASSIM: Saving " + uuid + " data...");
         CustomPlayer ply = players.get(uuid);
+        playerDataDB.loadRow(uuid);
+        playerConfigDB.loadRow(uuid);
+        playerDataDB.safePut(uuid, "xp", ply.xp);
+        playerConfigDB.safePut(uuid, "defaultRank", ply.dRank);
         playerDataDB.saveRow(uuid);
         playerConfigDB.saveRow(uuid);
     }
@@ -971,16 +968,16 @@ public class Assimilation extends Plugin {
         // Reset ranks
         playerDataDB.setColumn("xp", 0);
 
-        for(Object uuid: playerDataDB.entries.keySet().toArray()){
-            playerDataDB.safePut((String) uuid,"xp", 0);
+        for(String uuid : players.keySet()){
+            players.get(uuid).xp = 0;
         }
     }
 
     void winsReset(){
         playerDataDB.setColumn("monthWins", 0);
 
-        for(Object uuid: playerDataDB.entries.keySet().toArray()){
-            playerDataDB.safePut((String) uuid,"monthWins", 0);
+        for(String uuid : players.keySet()){
+            players.get(uuid).wins = 0;
         }
     }
 }

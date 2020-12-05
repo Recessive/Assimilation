@@ -11,6 +11,9 @@ public class CustomPlayer{
     public boolean connected;
     public int eventCalls = 0;
     public int joinsLeft = 1;
+    public int xp;
+    public int dRank = 2;
+    public int wins;
 
 
     public CustomPlayer(Player player, int assimRank){
