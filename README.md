@@ -1,6 +1,6 @@
 #Assimilation by Recessive
 
-No one is allowed to use this plugin without permission.
+Anyone can use this plugin for any purpose, credit would be nice :)
 
 ### Building a Jar
 
